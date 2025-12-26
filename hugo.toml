@@ -1,8 +1,16 @@
 baseURL = "https://liuyiyueyue.github.io/"
 languageCode = "en-us"
 title = "Yiyue (Lily) Liu"
-theme = "ananke"
+theme = "PaperMod"
 
 [params]
-  description = "Systems, concurrency, and distributed systems notes"
+  defaultTheme = "auto"
+  ShowReadingTime = true
+  ShowCodeCopyButtons = true
+  ShowToc = true
+
+[params.profileMode]
+  enabled = true
+  title = "Welcome to my blog!"
+  subtitle = "ML and systems notes"
 
