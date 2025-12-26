@@ -6,21 +6,6 @@
     <description>Recent content on Yiyue (Lily) Liu</description>
     <generator>Hugo -- 0.153.2</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 25 Dec 2025 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>Hello</title>
-      <link>http://localhost:1313/posts/hello/</link>
-      <pubDate>Thu, 25 Dec 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/hello/</guid>
-      <description>&lt;p&gt;This is my personal technical blog.&lt;/p&gt;
-&lt;p&gt;Topics I write about:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Large scale training and inference&lt;/li&gt;
-&lt;li&gt;Systems &amp;amp; concurrency&lt;/li&gt;
-&lt;li&gt;Kernel-level concepts&lt;/li&gt;
-&lt;li&gt;Distributed systems&lt;/li&gt;
-&lt;/ul&gt;</description>
-    </item>
   </channel>
 </rss>
