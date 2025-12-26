@@ -1,0 +1,13 @@
+# Hugo build output
+public/
+
+# Hugo generated resources
+resources/
+
+# OS files
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
