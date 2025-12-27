@@ -1,34 +1,83 @@
-baseURL = "https://liuyiyueyue.github.io/"
-languageCode = "en-us"
-title = "Yiyue (Lily) Liu"
-theme = "PaperMod"
+baseURL = 'https://liuyiyuelily.github.io/'
+languageCode = 'en-us'
+title = 'Yiyue Liu Blog'
+theme = 'typo'
+
+# Google analytics code
+googleAnalytics = "G-xxxxxxxxx"
+
+[taxonomies]
+tag = 'tags'
 
 [params]
-  defaultTheme = "auto"
-  ShowReadingTime = true
-  ShowCodeCopyButtons = true
-  ShowToc = true
+# Meta description
+description = "A Tech Blog"
 
-[params.homeInfoParams]
-  Title = "This is my personal technical blog."
-  Content = """
-- Large-scale training and inference
-- Systems & concurrency
-- Kernel-level concepts
-- Distributed systems
-- Software engineering
+# Appearance settings
+theme = 'auto'
+colorPalette = 'default'
+hideHeader = false
+
+# Intro on main page, content is markdown
+homeIntroTitle = 'Hi!'
+homeIntroContent = """
+Topics I write about:
+
+1. Large-scale training and inference
+2. Kernel-level concepts
+3. Operating systems
+4. Software engineering
 """
 
-[params.profileMode]
-  enabled = false
+## Collection to display on home
+#homeCollectionTitle = 'Posts'
+#homeCollection = 'posts'
 
-[menu]
-  [[menu.main]]
-    name = "About"
-    url = "/about/"
-    weight = 1
+# Lists parameters
+paginationSize = 100
+listSummaries = true
+listDateFormat = '2 Jan 2006'
 
-  [[menu.main]]
-    name = "Engineering"
-    url = "/engineering/"
-    weight = 2
+# Breadcrumbs
+[params.breadcrumbs]
+enabled = true
+showCurrentPage = true
+home = "Home"
+
+## Social icons
+#[[params.social]]
+#name = "linkedin"
+#url = "https://www.linkedin.com/in/user/"
+
+
+#[[params.social]]
+#name = "github"
+#url = "https://github.com/user"
+
+# Main menu pages
+[[params.menu]]
+name = "home"
+url = "/"
+
+[[params.menu]]
+name = "software engineering"
+url = "/software_engineering"
+
+[[params.menu]]
+name = "about"
+url = "/about"
+
+# Syntax highlight on code blocks
+[markup]
+[markup.highlight]
+style = 'algol'
+
+# Giscus comments
+[params.giscus]
+enable = false
+repo = "user/repo"
+repoid = "repoId"
+category = "General"
+categoryid = "categoryId"
+mapping = "pathname"
+theme = "preferred_color_scheme"
