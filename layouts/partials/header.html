@@ -8,6 +8,7 @@
         <a href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
     </h1>
 
+    {{ if .IsHome }}
     <div class="header-menu">
         {{ $currentPage := . }}
 
@@ -36,6 +37,7 @@
         {{ end }}
         {{ end }}
     </div>
+    {{ end }}
 
     {{ end }}
 
