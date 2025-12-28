@@ -1,0 +1,34 @@
+{{/* Header (overridden for multilingual-aware menu) */}}
+
+<div class="header">
+
+  {{ if or (not (.Param "hideHeader")) .IsHome }}
+
+  <h1 class="header-title">
+    <a href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
+  </h1>
+
+  <div class="header-menu">
+    {{ $current := . }}
+
+    {{ range site.Menus.main }}
+      {{ $url := "" }}
+
+      {{ if .Page }}
+        {{ $url = .Page.RelPermalink }}
+      {{ else if .URL }}
+        {{ $url = .URL | relLangURL }}
+      {{ end }}
+
+      <p class="small {{ if and .Page (eq .Page.RelPermalink $current.RelPermalink) }} bold {{ end }}">
+        <a href="{{ $url }}">
+          /{{ .Name }}
+        </a>
+      </p>
+    {{ end }}
+  </div>
+
+  {{ end }}
+
+</div>
+

@@ -1,10 +1,22 @@
 baseURL = 'https://liuyiyuelily.github.io/'
-languageCode = 'en-us'
 title = 'Yiyue Liu Blog'
 theme = 'typo'
 
 # Google analytics code
 googleAnalytics = "G-xxxxxxxxx"
+
+languageCode = "en-us"
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = false
+
+[languages]
+  [languages.en]
+    languageName = "English"
+    weight = 1
+
+  [languages.zh]
+    languageName = "中文"
+    weight = 2
 
 [taxonomies]
 tag = 'tags'
@@ -18,16 +30,16 @@ theme = 'auto'
 colorPalette = 'default'
 hideHeader = false
 
-# Intro on main page, content is markdown
-homeIntroTitle = 'Hi!'
-homeIntroContent = """
-Topics I write about:
-
-1. Large-scale training and inference
-2. Kernel-level concepts
-3. Operating systems
-4. Software engineering
-"""
+## Intro on main page, content is markdown
+#homeIntroTitle = 'Hi!'
+#homeIntroContent = """
+#Topics I write about:
+#
+#1. Large-scale training and inference
+#2. Kernel-level concepts
+#3. Operating systems
+#4. Software engineering
+#"""
 
 ## Collection to display on home
 #homeCollectionTitle = 'Posts'
@@ -44,6 +56,11 @@ enabled = true
 showCurrentPage = true
 home = "Home"
 
+[languages.zh.params.breadcrumbs]
+enabled = true
+showCurrentPage = true
+home = "主页"
+
 ## Social icons
 #[[params.social]]
 #name = "linkedin"
@@ -55,17 +72,40 @@ home = "Home"
 #url = "https://github.com/user"
 
 # Main menu pages
-[[params.menu]]
-name = "home"
-url = "/"
+# English
+[languages.en.menu]
+  [[languages.en.menu.main]]
+    name = "Home"
+    pageRef = "/"
+    weight = 1
 
-[[params.menu]]
-name = "software engineering"
-url = "/software_engineering"
+  [[languages.en.menu.main]]
+    name = "Software Engineering"
+    pageRef = "/software_engineering"
+    weight = 2
 
-[[params.menu]]
-name = "about"
-url = "/about"
+  [[languages.en.menu.main]]
+    name = "About"
+    pageRef = "/about"
+    weight = 3
+
+# Chinese
+[languages.zh.menu]
+  [[languages.zh.menu.main]]
+    name = "主页"
+    pageRef = "/"
+    weight = 1
+
+  [[languages.zh.menu.main]]
+    name = "软件工程"
+    pageRef = "/software_engineering"
+    weight = 2
+
+  [[languages.zh.menu.main]]
+    name = "关于"
+    pageRef = "/about"
+    weight = 3
+
 
 # Syntax highlight on code blocks
 [markup]

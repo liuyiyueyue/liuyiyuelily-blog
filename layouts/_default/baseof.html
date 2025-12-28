@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="{{ or site.Language.LanguageCode site.Language.Lang }}"
+  dir="{{ or site.Language.LanguageDirection `ltr` }}">
+
+<head>
+  {{ partial "head.html" . }}
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="{{ "css/custom.css" | relURL }}">
+</head>
+
+{{ $theme := "auto"}}
+
+{{ with .Param "theme" }}
+{{ $theme = .}}
+{{ end }}
+
+<body class="{{ $theme }}">
+
+  <div class="content">
+    <header style="position: relative;">
+      {{ partial "header.html" . }}
+
+      {{ if hugo.IsMultilingual }}
+      <div class="lang-switch">
+        {{ range site.Languages }}
+          {{ $lang := .Lang }}
+
+          {{ if eq $lang $.Site.Language.Lang }}
+            <span class="active">{{ .LanguageName }}</span>
+          {{ else }}
+            {{ $target := "" }}
+
+            {{/* 1. Prefer: same page translation */}}
+            {{ range $.Translations }}
+              {{ if eq .Language.Lang $lang }}
+                {{ $target = .RelPermalink }}
+              {{ end }}
+            {{ end }}
+
+            {{/* 2. Fallback: target language homepage */}}
+            {{ if eq $target "" }}
+              {{ range site.Home.AllTranslations }}
+                {{ if eq .Language.Lang $lang }}
+                  {{ $target = .RelPermalink }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+
+            <a href="{{ $target }}">{{ .LanguageName }}</a>
+          {{ end }}
+
+          {{ if not (eq $lang (index site.Languages (sub (len site.Languages) 1)).Lang) }}
+            |
+          {{ end }}
+        {{ end }}
+      </div>
+      {{ end }}
+
+    </header>
+
+    <main class="main">
+      {{ block "main" . }}{{ end }}
+    </main>
+  </div>
+
+  {{/* Body end hook */}}
+  {{ partial "functions/get_hook.html" (dict "hook" "body_end" "context" .) }}
+
+  <footer>
+    {{ partial "footer.html" . }}
+  </footer>
+
+  {{ if .Param "math" }}
+  {{ partialCached "math.html" . }}
+  {{ end }}
+</body>
+
+<script src="{{ "js/theme-switch.js" | relURL }}"></script>
+<script defer src="{{ "js/copy-code.js" | relURL }}"></script>
+</html>
+
