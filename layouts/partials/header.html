@@ -1,34 +1,42 @@
-{{/* Header (overridden for multilingual-aware menu) */}}
+{{/* Header */}}
 
 <div class="header">
 
-  {{ if or (not (.Param "hideHeader")) .IsHome }}
+    {{ if or (not (.Param "hideHeader")) .IsHome }}
 
-  <h1 class="header-title">
-    <a href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
-  </h1>
+    <h1 class="header-title">
+        <a href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
+    </h1>
 
-  <div class="header-menu">
-    {{ $current := . }}
+    <div class="header-menu">
+        {{ $currentPage := . }}
 
-    {{ range site.Menus.main }}
-      {{ $url := "" }}
+        {{ with site.Params.menu }}
+        {{ range . }}
 
-      {{ if .Page }}
-        {{ $url = .Page.RelPermalink }}
-      {{ else if .URL }}
-        {{ $url = .URL | relLangURL }}
-      {{ end }}
+        <p
+            class="small {{ if eq .name (lower $currentPage.Name) }} bold {{end}}">
+            <a href="{{ .url }}" {{ if and (isset . "newTab") .newTab
+                }}target="_blank" rel="noopener noreferrer" {{ end }}>
+                /{{.name }}
+            </a>
+        </p>
+        {{ end }}
+        {{ else }}
+        {{ with site.Menus.main }}
+        {{ range . }}
 
-      <p class="small {{ if and .Page (eq .Page.RelPermalink $current.RelPermalink) }} bold {{ end }}">
-        <a href="{{ $url }}">
-          /{{ .Name }}
-        </a>
-      </p>
+        <p
+            class="small {{ if eq .Name $currentPage.Title }} bold {{end}}">
+            <a href="{{ .URL }}">
+                /{{ .Name }}
+            </a>
+        </p>
+        {{ end }}
+        {{ end }}
+        {{ end }}
+    </div>
+
     {{ end }}
-  </div>
-
-  {{ end }}
 
 </div>
-
