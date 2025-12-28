@@ -28,9 +28,6 @@ Once a change was submitted, it often waited a long time for an initial review.
 Follow-up revisions were not much better: each new version re-entered the same
 queue, compounding the delay.
 
-From the author’s perspective, progress stalled not because the code was blocked,
-but because **feedback was slow**.
-
 ### Senior Engineers as the Critical Path
 
 For non-trivial changes, reviews were frequently expected from senior engineers.
