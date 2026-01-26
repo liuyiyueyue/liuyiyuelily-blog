@@ -85,6 +85,11 @@ home = "主页"
     pageRef = "/software_engineering"
     weight = 2
 
+  [[languages.en.menu.main]]
+    name = "LLM"
+    pageRef = "/llm"
+    weight = 3
+
 # Chinese
 [languages.zh.menu]
   [[languages.zh.menu.main]]
@@ -96,6 +101,11 @@ home = "主页"
     name = "软件工程"
     pageRef = "/software_engineering"
     weight = 2
+
+  [[languages.zh.menu.main]]
+    name = "大模型"
+    pageRef = "/llm"
+    weight = 3
 
 
 # Syntax highlight on code blocks
