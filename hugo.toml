@@ -85,11 +85,6 @@ home = "主页"
     pageRef = "/software_engineering"
     weight = 2
 
-  [[languages.en.menu.main]]
-    name = "About"
-    pageRef = "/about"
-    weight = 3
-
 # Chinese
 [languages.zh.menu]
   [[languages.zh.menu.main]]
@@ -101,11 +96,6 @@ home = "主页"
     name = "软件工程"
     pageRef = "/software_engineering"
     weight = 2
-
-  [[languages.zh.menu.main]]
-    name = "关于"
-    pageRef = "/about"
-    weight = 3
 
 
 # Syntax highlight on code blocks
