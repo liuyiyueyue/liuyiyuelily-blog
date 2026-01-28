@@ -1,0 +1,26 @@
+{{ define "main" }}
+<div class="list-container archive-container">
+    {{ partial "breadcrumbs.html" . }}
+
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+
+    {{ $dateFormat := .Site.Params.listDateFormat | default "2 Jan 2006" }}
+    {{ $pages := where site.RegularPages "Layout" "ne" "archives" }}
+    {{ $pages = $pages.ByDate.Reverse }}
+
+    {{ range $year := $pages.GroupByDate "2006" }}
+    <section class="archive-year">
+        <h2 class="archive-year-title" id="{{ $year.Key }}">{{ $year.Key }}</h2>
+        <div class="archive-year-list">
+            {{ range $page := $year.Pages }}
+            <div class="archive-entry">
+                <p class="archive-date">{{ $page.Date | time.Format $dateFormat }}</p>
+                <p class="archive-title"><a href="{{ $page.RelPermalink }}">{{ $page.Title }}</a></p>
+            </div>
+            {{ end }}
+        </div>
+    </section>
+    {{ end }}
+</div>
+{{ end }}

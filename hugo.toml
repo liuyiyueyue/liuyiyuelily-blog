@@ -81,14 +81,19 @@ home = "主页"
     weight = 1
 
   [[languages.en.menu.main]]
+    name = "Archive"
+    pageRef = "/archives"
+    weight = 2
+
+  [[languages.en.menu.main]]
     name = "Software Engineering"
     pageRef = "/software_engineering"
-    weight = 2
+    weight = 3
 
   [[languages.en.menu.main]]
     name = "LLM"
     pageRef = "/llm"
-    weight = 3
+    weight = 4
 
 # Chinese
 [languages.zh.menu]
@@ -98,14 +103,19 @@ home = "主页"
     weight = 1
 
   [[languages.zh.menu.main]]
+    name = "归档"
+    pageRef = "/archives"
+    weight = 2
+
+  [[languages.zh.menu.main]]
     name = "软件工程"
     pageRef = "/software_engineering"
-    weight = 2
+    weight = 3
 
   [[languages.zh.menu.main]]
     name = "大模型"
     pageRef = "/llm"
-    weight = 3
+    weight = 4
 
 
 # Syntax highlight on code blocks
