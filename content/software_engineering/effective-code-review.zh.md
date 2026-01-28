@@ -2,6 +2,12 @@
 title: "代码评审瓶颈：从团队困境到实践"
 date: 2025-12-25
 tags: ["software-engineering", "code-review", "productivity"]
+## Temporarily disabled on UI
+draft: true
+_build:
+  list: false
+  publishResources: false
+  render: false
 ---
 
 这篇文章源于我所在团队的一个具体问题。
