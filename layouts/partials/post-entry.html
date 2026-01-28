@@ -1,0 +1,41 @@
+<div class="post-line">
+
+    {{ $dateFormat := .Site.Params.listDateFormat | default "2 Jan 2006" }}
+
+    {{ if .Parent.Param "showListDate" | default true }}
+        <p class="line-date">{{ .Date | time.Format $dateFormat }} </p>
+    {{ end }}
+
+    <div>
+        <p class="line-title">
+            <a href="{{ .RelPermalink }}">
+                {{ .Title }}
+            </a>
+        </p>
+
+        {{ if .Site.Params.listSummaries }}
+        {{ $plain := .Content | plainify }}
+        {{ $plain = replaceRE "(^|\\s)#(\\s|$)" " " $plain }}
+        {{ $plain = replaceRE "\\s+" " " $plain }}
+        {{ $summary := "" }}
+        {{ $sentences := slice }}
+        {{ if eq site.Language.Lang "zh" }}
+            {{ $sentences = findRE "[^。！？]+[。！？]+" $plain }}
+        {{ else }}
+            {{ $sentences = findRE "[^.!?]+[.!?]+" $plain }}
+        {{ end }}
+        {{ if gt (len $sentences) 0 }}
+            {{ $limit := 3 }}
+            {{ range $i, $s := $sentences }}
+                {{ if lt $i $limit }}
+                    {{ $summary = printf "%s%s" $summary $s }}
+                {{ end }}
+            {{ end }}
+        {{ else }}
+            {{ $summary = $plain | truncate 240 }}
+        {{ end }}
+        {{ $summary = printf "%s..." $summary }}
+        <p class="line-summary">{{ $summary }}</p>
+        {{ end }}
+    </div>
+</div>
