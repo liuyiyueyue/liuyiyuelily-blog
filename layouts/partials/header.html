@@ -5,39 +5,24 @@
     {{ if or (not (.Param "hideHeader")) .IsHome }}
 
     <h1 class="header-title">
-        <a href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
+        <a href="{{ site.BaseURL }}">{{ site.Title }}</a>
     </h1>
 
-    {{ if .IsHome }}
     <div class="header-menu">
         {{ $currentPage := . }}
+        {{ $menu := site.Menus.main }}
 
-        {{ with site.Params.menu }}
-        {{ range . }}
-
-        <p
-            class="small {{ if eq .name (lower $currentPage.Name) }} bold {{end}}">
-            <a href="{{ .url }}" {{ if and (isset . "newTab") .newTab
-                }}target="_blank" rel="noopener noreferrer" {{ end }}>
-                /{{.name }}
-            </a>
-        </p>
-        {{ end }}
-        {{ else }}
-        {{ with site.Menus.main }}
-        {{ range . }}
-
-        <p
-            class="small {{ if eq .Name $currentPage.Title }} bold {{end}}">
-            <a href="{{ .URL }}">
+        {{ if $menu }}
+        {{ range $menu }}
+        {{ $isActive := or ($currentPage.IsMenuCurrent "main" .) ($currentPage.HasMenuCurrent "main" .) }}
+        <p class="small {{ if $isActive }} bold {{ end }}">
+            <a href="{{ .URL }}" {{ if and (isset .Params "newTab") .Params.newTab }}target="_blank" rel="noopener noreferrer" {{ end }}>
                 /{{ .Name }}
             </a>
         </p>
         {{ end }}
         {{ end }}
-        {{ end }}
     </div>
-    {{ end }}
 
     {{ end }}
 

@@ -18,8 +18,8 @@
   font-weight: 600;
 }
 
-.archive-container {
-  padding-top: 0.5rem;
+.breadcrumbs {
+  display: none !important;
 }
 
 .archive-year {
