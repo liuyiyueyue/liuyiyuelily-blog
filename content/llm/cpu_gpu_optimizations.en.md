@@ -101,6 +101,9 @@ For a host-to-device transfer, the flow is:
 
 The problem with using a bounce buffer is that host-to-device transfers
 require an extra CPU copy:
-- Copy 1: User buffer → kernel bounce. This is the extra CPU copy.
+- Copy 1: User buffer → kernel bounce buffer. This is the extra CPU copy.
 - Copy 2: Kernel bounce buffer → device buffer
 
+Using zero-copy, we eliminate this extra CPU copy, but at the cost of the additional time required to pin memory. In the next blogs, we will dive deeper 
+into the performance analysis of zero-copy and pinned memory and discuss 
+the cost of pinning memory.
