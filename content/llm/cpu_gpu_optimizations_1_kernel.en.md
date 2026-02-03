@@ -1,5 +1,5 @@
 ---
-title: "[1/3] CPU-GPU Optimization: Zero-Copy and Pinned Memory"
+title: "[1/3] CPU-GPU Optimization: Pinned Memory and Zero-Copy"
 date: 2026-01-25
 tags: ["llm", "kernel", "optimization"]
 ---
@@ -14,7 +14,7 @@ tags: ["llm", "kernel", "optimization"]
 - **Normal memory** in an OS can be paged out to disk by the virtual memory manager. This is fine for general workloads but not for I/O devices that need **direct and fast access**.
 - **Pinned memory** is “locked” into physical RAM so the OS guarantees it will always stay resident.
 - This is crucial for **DMA (Direct Memory Access)**: when a device (like a GPU, NIC, or storage controller) directly reads/writes memory, the physical addresses must not change during the transfer.
-- In GPU computing (CUDA, etc.), pinned memory allows **faster host–device transfers** because the GPU can DMA directly without needing a temporary bounce buffer (**zero-copy**), e.g., CUDA `cudaHostAlloc`.
+- In GPU computing (CUDA, etc.), pinned memory allows **faster host–device transfers** because the GPU can DMA directly without needing a temporary bounce buffer (**zero-copy**), e.g., CUDA `cudaMallocHost` and `cudaHostAlloc`.
 
 
 ### Trade-offs
@@ -100,10 +100,11 @@ For a host-to-device transfer, the flow is:
 2. DMA engine reads from the bounce buffer and transfers data to the device.
 
 The problem with using a bounce buffer is that host-to-device transfers
-require an extra CPU copy:
-- Copy 1: User buffer → kernel bounce buffer. This is the extra CPU copy.
-- Copy 2: Kernel bounce buffer → device buffer
+require an extra CPU memcpy:
+- Copy 1: User buffer → kernel bounce buffer. This is done via a CPU memcpy.
+- Copy 2: Kernel bounce buffer → device buffer. This is done via PCIe DMA.
 
-Using zero-copy, we eliminate this extra CPU copy, but at the cost of the additional time required to pin memory. In the next blogs, we will dive deeper 
-into the performance analysis of zero-copy and pinned memory and discuss 
-the cost of pinning memory.
+Using pinning memory, we eliminate that extra CPU memcpy, but at the cost of the 
+additional time required to pin memory, plus the risk of running out of pagable 
+memory.
+In the next blogs, we will dive deeper into the performance analysis of pinned-memory and zero-copy and discuss the cost of pinning memory.
