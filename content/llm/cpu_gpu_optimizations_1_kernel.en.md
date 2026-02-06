@@ -1,8 +1,11 @@
 ---
-title: "[1/3] CPU-GPU Optimization: Pinned Memory and Zero-Copy"
+title: "[1/4] CPU-GPU Optimization: Pinned Memory in Kernel"
 date: 2026-01-25
 tags: ["llm", "kernel", "optimization"]
 ---
+
+This is the first post in the “CPU‑GPU Optimization” series. 
+It lays the kernel‑level foundation for pinned memory, which later posts build on.
 
 ### What is pinned memory?
 
