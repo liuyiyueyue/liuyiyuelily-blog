@@ -57,7 +57,7 @@ specified CUDA event `ev` has been recorded.
 ## Async Memcpy
 
 In this section, we introduce `cudaMemcpyAsync`, the **non-blocking, asynchronous** counterpart to
-`cudaMemcpy` from the previous post. Unlike `cudaMemcpy`, `cudaMemcpyAsync` returns immediately;
+`cudaMemcpy` described in previous blog (See [Pinned Memory + Memcpy](/llm/cpu_gpu_optimizations_2_cuda_memcpy/#2-pinned-memory--memcpy)). Unlike `cudaMemcpy`, `cudaMemcpyAsync` returns immediately;
 the transfer is enqueued into a specified CUDA stream. This makes it possible to 
 **overlap memcpy with kernel execution** or with other memcpy operations 
 (when the hardware and stream setup allow it).
