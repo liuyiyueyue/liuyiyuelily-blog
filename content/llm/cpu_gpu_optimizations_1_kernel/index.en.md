@@ -1,5 +1,5 @@
 ---
-title: "[1/4] CPU-GPU Optimization: Pinned Memory in Kernel"
+title: "[1/4] CPU-GPU Optimization: Pinned Memory in Linux Kernel"
 date: 2026-01-25
 tags: ["llm", "kernel", "optimization"]
 ---
@@ -98,7 +98,7 @@ User-space pages may be discontiguous, pageable (unpinned), or otherwise
 inaccessible to DMA due to device or IOMMU addressing constraints.
 As a result, the kernel allocates a contiguous DMA-capable bounce buffer.
 
-{{< figure src="./pinned_memory.png" caption="Memcpy with Pinned Memory" >}}
+{{< figure src="./bounce_buffer.png" caption="Memcpy with Bounce Buffer" >}}
 
 For a host-to-device transfer, the flow is:
 1. CPU copies data from the user buffer into the kernel bounce buffer.
@@ -113,7 +113,6 @@ Using pinned memory, we eliminate that extra CPU memcpy, but at the cost of the
 additional time required to pin memory, plus the risk of running out of pagable 
 memory.
 
-{{< figure src="./bounce_buffer.png" caption="Memcpy with Bounce Buffer" >}}
-
+{{< figure src="./pinned_memory.png" caption="Memcpy with Pinned Memory" >}}
 
 In the next blogs, we will dive deeper into the performance analysis of pinned-memory and zero-copy and discuss the cost of pinning memory.
