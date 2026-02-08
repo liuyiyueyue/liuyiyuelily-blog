@@ -68,7 +68,7 @@ cudaFree(device_mem);
 and **maps this memory into GPU address space**.
 - `cudaHostGetDevicePointer` obtains the GPU-mapped address of the host pinned memory.
 - `cudaFreeHost` replaces `free`.
-- Zero-copy uses **no device memory**; data always stays on the CPU. So there is no `cudaMemcpy`. The GPU modifies host memory directly via PCIe transactions (still DMA read/write). So while `cudaMemcpy` is an explicit DMA copy initiated by the runtime/driver API, zero-copy is an **implicit DMA copy** initiated by GPU hardware.
+- Zero-copy uses **no device memory**; data always stays on the CPU. So there is no `cudaMemcpy`. The GPU modifies host memory directly **via PCIe transactions (still DMA read/write)**. So while `cudaMemcpy` is an explicit DMA copy initiated by the runtime/driver API, zero-copy is an **implicit DMA copy** initiated by GPU hardware.
 - Zero-copy turns compute intensity into “memory-access intensity.” Thus, it is rarely used for compute-intensive workloads such as ML and HPC.
 
 The below example shows a GPU kernel directly accesses host memory without an explicit cudaMemcpy:
