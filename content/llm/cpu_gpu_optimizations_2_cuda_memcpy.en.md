@@ -72,7 +72,9 @@ References:
 and **maps this memory into GPU address space**.
 - `cudaHostGetDevicePointer` obtains the GPU-mapped address of the host pinned memory.
 - `cudaFreeHost` replaces `free`.
-- Zero-copy uses **no device memory**; data always stays on the CPU. So there is no `cudaMemcpy`. The GPU modifies host memory directly **via PCIe transactions (still DMA read/write)**. So while `cudaMemcpy` is an explicit DMA copy initiated by the runtime/driver API, zero-copy is an **implicit DMA copy** initiated by GPU hardware.
+- Zero-copy uses **no device memory**; data always resides in **pinned host memory**. So there is no `cudaMemcpy` needed. 
+The CUDA driver registers the host physical pages with the GPU MMU and installs GPU page table entries that map GPU virtual addresses to CPU physical addresses.
+During kernel execution, the GPU directly reads and writes host memory **via PCIe** (or NVLink) memory transactions rather than DMA transfers.
 - Zero-copy turns compute intensity into “memory-access intensity.” Thus, it is rarely used for compute-intensive workloads such as ML and HPC.
 
 The below example shows a GPU kernel directly accesses host memory without an explicit cudaMemcpy:
@@ -107,10 +109,10 @@ References:
 **A unified address space across CPU and all GPUs**
 
 - `cudaMallocManaged` allocates a unified virtual address whose physical pages reside on either CPU or GPU memory.
-When it is called, the kernel driver only reserves a VA, but CPU or GPU PA pages are populated lazily on the first access.
+When it is called, the kernel driver only reserves a virtual address (VA), but CPU or GPU physical adress (PA) pages are populated lazily on the first access.
 
-- Different from zero-copy and pinned memory approaches, with UVM, CPU and all GPUs share the **same virtual address (VA) space**. 
-At any moment, a VA maps to **one side’s** physical pages (PA): either CPU DRAM or GPU HBM. 
+- Different from zero-copy and pinned memory approaches, with UVM, CPU and all GPUs share the **same virtual address space**. 
+At any moment, a VA maps to **one side’s** physical pages: either CPU DRAM or GPU HBM. 
 
 - With UVM, there is no need for a device pointer via `cudaHostGetDevicePointer`. 
 Pages migrate on demand between CPU and GPU memory via **CPU/GPU page faults**, with residency managed by the CUDA driver.
