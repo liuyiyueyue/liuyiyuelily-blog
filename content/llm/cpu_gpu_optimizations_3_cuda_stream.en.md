@@ -66,7 +66,7 @@ To use `cudaMemcpyAsync`, the **host memory must be pinned** via `cudaMallocHost
 and the device memory must be a valid device pointer (typically allocated with `cudaMalloc`).
 
 Below is an example of one stream. Within one stream, the (async) memcpys and kernels execute sequentially. 
-That means the execution order is H2D → Kernel → D2H.
+That means the execution order is H2D → Kernel.
 
 ```cuda
 size_t transfer_size = N * sizeof(float);
@@ -81,7 +81,6 @@ cudaStreamCreate(&s);
 
 cudaMemcpyAsync(device_mem, host_mem, transfer_size, cudaMemcpyHostToDevice, s);
 kernel<<<grid, block, 0, s>>>(device_mem, device_mem);
-cudaMemcpyAsync(host_mem, device_mem, transfer_size, cudaMemcpyDeviceToHost, s);
 
 cudaStreamSynchronize(s);
 ```
@@ -107,7 +106,6 @@ for (int i = 0; i < num_streams; i++) {
   int offset = i * transfer_element_per_stream;
   cudaMemcpyAsync(device_mem + offset, host_mem + offset, transfer_size_per_stream, cudaMemcpyHostToDevice, s[i]);
   kernel<<<grid, block, 0, s[i]>>>(device_mem + offset, transfer_element_per_stream);
-  cudaMemcpyAsync(host_mem + offset, device_mem + offset, transfer_size_per_stream, cudaMemcpyDeviceToHost, s[i]);
 }
 
 for (int i = 0; i < num_streams; i++) {
@@ -115,7 +113,7 @@ for (int i = 0; i < num_streams; i++) {
 }
 ```
 
-Although H2D and D2H transfers are issued from different CUDA streams, 
+Although H2D transfers are issued from different CUDA streams, 
 they share the same PCIe interconnect and are serviced by a limited number of copy engines. 
 As a result, transfers in the same direction are typically serialized, 
 while copy and compute can overlap, leading to a pipelined execution pattern.
@@ -127,12 +125,12 @@ we can see the concurrency reduced the total execution time and bubbles.
 Time →
 
 # serial version (one stream):
-Stream 0: H2D ────────────────────────> Kernel ────────────────────────> D2H
+Copy Engine: |────────────────H2D────────────────|
+GPU:                                             |───────────────Kernel───────────────|
 
 # multi stream version (three streams)
-Stream 0: H2D ──> Kernel ──> D2H
-Stream 1:         H2D    ──> Kernel ──> D2H
-Stream 2:                    H2D    ──> Kernel ──> D2H
+Copy Engine: |────H2D────|────H2D────|────H2D────|
+GPU:                     |───Kernel───|───Kernel───|───Kernel───|
 ```
 
 References:
