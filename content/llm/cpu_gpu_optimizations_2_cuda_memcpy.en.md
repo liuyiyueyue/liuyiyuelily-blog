@@ -60,6 +60,10 @@ cudaFreeHost(host_mem);
 cudaFree(device_mem);
 ```
 
+References: 
+1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory
+
+
 #### 3. Zero-copy
 
 **GPU stores no data, but remotely accesses and modifies CPU memory**
@@ -94,6 +98,10 @@ cudaDeviceSynchronize();
 cudaFreeHost(host_mem);
 ```
 
+References: 
+1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#zero-copy
+
+
 #### 4. Unified Memory (UVM)
 
 **A unified address space across CPU and all GPUs**
@@ -125,3 +133,6 @@ cudaDeviceSynchronize();
 
 cudaFree(mem);
 ```
+
+References:
+1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#unified-virtual-addressing

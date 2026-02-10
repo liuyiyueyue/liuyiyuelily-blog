@@ -134,3 +134,6 @@ Stream 0: H2D ──> Kernel ──> D2H
 Stream 1:         H2D    ──> Kernel ──> D2H
 Stream 2:                    H2D    ──> Kernel ──> D2H
 ```
+
+References:
+1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#asynchronous-and-overlapping-transfers-with-computation
