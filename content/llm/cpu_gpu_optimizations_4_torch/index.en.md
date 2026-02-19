@@ -1,6 +1,6 @@
 ---
 title: "[4/4] CPU-GPU Optimization: PyTorch"
-date: 2026-02-08
+date: 2026-02-19
 tags: ["llm", "pytorch", "optimization", "cuda"]
 ---
 
