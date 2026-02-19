@@ -61,7 +61,7 @@ cudaFree(device_mem);
 ```
 
 References: 
-1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory
+1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory
 
 
 #### 3. Zero-copy
@@ -137,4 +137,4 @@ cudaFree(mem);
 ```
 
 References:
-1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#unified-virtual-addressing
+1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#unified-virtual-addressing
