@@ -120,6 +120,8 @@ When the CPU accesses a VA whose page is resident in GPU memory and not CPU-acce
 The kernel driver migrates the page by DMA from GPU memory to host memory, update page tables, and resume execution with the page now resident on the CPU.
 Vice versa, but it's a GPU page fault.
 
+- UVM is supported since CUDA 6.0, starting with Kepler-generation GPUs.
+
 - ML / HPC rarely use UVM as well.
 
 The below example shows an example of UVM without `cudaHostGetDevicePointer`:

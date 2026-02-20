@@ -37,6 +37,8 @@ It lays the kernel‑level foundation for pinned memory, which later posts build
 
 ### Kernel APIs
 
+Linux kernel supports pin and unpin APIs starting on v5.6.
+
 There are three APIs to pin memory so the kernel (or a device) can access them:
 ```
 pin_user_pages()
