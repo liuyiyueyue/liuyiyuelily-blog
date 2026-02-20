@@ -24,7 +24,7 @@ y = torch.randn(50_000_000, device=device)
 z = torch.randn(50_000_000, device=device)
 ```
 
-{{< figure src="./1_cpu_execution_trace.png" caption="Figure 1: CPU execution timeline (sequential execution on main thread)<br><em>. Note: cudaDeviceSynchronize in this trace is introduced by the PyTorch Profiler instrumentation, not explicitly called in the example code.</em>" align="center" >}}
+{{< figure src="./images/1_cpu_execution_trace.png" caption="Figure 1: CPU execution timeline (sequential execution on main thread)<br><em>. Note: cudaDeviceSynchronize in this trace is introduced by the PyTorch Profiler instrumentation, not explicitly called in the example code. </em><br>[Code source: 1_cpu.py](./code/1_cpu.py)" align="center" >}}
 
 
 Now switch from CPU to GPU by using `device = torch.device("cuda")`, 
@@ -46,7 +46,7 @@ z = torch.randn(50_000_000, device=device)
 
 Below is a diagram: 
 
-{{< figure src="./2_gpu_async_execution.png" caption="Figure 2: CPU-GPU asynchronous execution timeline<br><em>. Note: cudaDeviceSynchronize in this trace is also introduced by the PyTorch Profiler instrumentation, not explicitly called in the example code.</em>" align="center" >}}
+{{< figure src="./images/2_gpu_async_execution.png" caption="Figure 2: CPU-GPU asynchronous execution timeline<br><em>. Note: cudaDeviceSynchronize in this trace is also introduced by the PyTorch Profiler instrumentation, not explicitly called in the example code. </em><br>[Code source: 2_gpu.py](./code/2_gpu.py)" align="center" >}}
 
 In practice, if you want the CPU to wait for the GPU to finish, 
 call `torch.cuda.synchronize`. For accurate timing, record timestamps 
@@ -71,7 +71,7 @@ t1 = time.time()
 print("GPU finishes. Time:", t1 - t0)
 ```
 
-{{< figure src="./3_synchronize_trace.png" caption="Figure 3: CPU waits for GPU completion after synchronization" align="center" >}}
+{{< figure src="./images/3_synchronize_trace.png" caption="Figure 3: CPU waits for GPU completion after synchronization. <br>[Code source: 3_synchronize.py](./code/3_synchronize.py)" align="center" >}}
 
 
 During debugging, it’s fine to switch back to CPU execution or call `torch.cuda.synchronize`. 
@@ -119,7 +119,7 @@ scan for non‑zero elements, and allocate an output tensor. The output tensor s
 Thus the CPU waits for these GPU operations to finish. 
 There is no explicit `torch.cuda.synchronize` call, but this is still an implicit synchronization point.
 
-{{< figure src="./4_implicit_sync.png" caption="Figure 4: Implicit synchronization in a data-dependent GPU operation" align="center" >}}
+{{< figure src="./images/4_implicit_sync.png" caption="Figure 4: Implicit synchronization in a data-dependent GPU operation. <br>[Code source: 4_implicit_synchronize.py](./code/4_implicit_synchronize.py)" align="center" >}}
 
 
 ## Tensor Allocation and Memcpy
@@ -208,7 +208,7 @@ for step in range(num_steps):
     torch.cuda.synchronize()
 ```
 
-{{< figure src="./5_no_double_buffer_trace.png" caption="Figure 5.1: No overlap" align="center" >}}
+{{< figure src="./images/5_no_double_buffer_trace.png" caption="Figure 5.1: No overlap. <br>[Code source: 5_no_double_buffer.py](./code/5_no_double_buffer.py)" align="center" >}}
 
 With double buffering:
 
@@ -263,4 +263,4 @@ for step in range(num_steps):
 torch.cuda.synchronize()
 ```
 
-{{< figure src="./5_double_buffer_trace.png" caption="Figure 5.2: Data-compute overlap with double buffering" align="center" >}}
+{{< figure src="./images/5_double_buffer_trace.png" caption="Figure 5.2: Data-compute overlap with double buffering. <br>[Code source: 5_double_buffer.py](./code/5_double_buffer.py)" align="center" >}}
