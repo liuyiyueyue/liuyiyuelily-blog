@@ -133,5 +133,13 @@ Copy Engine: |────H2D────|────H2D────|───�
 GPU:                     |───Kernel───|───Kernel───|───Kernel───|
 ```
 
+{{< figure src="./images/single_stream_report.png" caption="Figure 1: Nsight Systems profile with a single CUDA stream." align="center" >}}
+
+{{< figure src="./images/multi_stream_report.png" caption="Figure 2: Nsight Systems profile with multiple CUDA streams." align="center" >}}
+
+
+
+
+
 References:
 1. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#asynchronous-and-overlapping-transfers-with-computation
