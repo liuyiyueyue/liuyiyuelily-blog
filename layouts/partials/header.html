@@ -5,7 +5,7 @@
     {{ if or (not (.Param "hideHeader")) .IsHome }}
 
     <h1 class="header-title">
-        <a href="{{ site.BaseURL }}">{{ site.Title }}</a>
+        <a href="{{ "/" | relLangURL }}">{{ site.Title }}</a>
     </h1>
 
     <div class="header-menu">
