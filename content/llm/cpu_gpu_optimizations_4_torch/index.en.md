@@ -159,9 +159,6 @@ CUDA streams. As Stream A executes the kernels, Stream B does the data transfers
 for the next batch. Once they are done, the streams swap roles. 
 This pipeline hides data transfer latency behind computation time.
 
-This technique is similar to the double-buffering technique used in inference systems.
-
-
 Conceptually, without any overlap, the total time is total copy time plus total 
 compute time:
 
@@ -178,7 +175,40 @@ Compute:  [ Compute0 ]    [ Compute1 ]    [ Compute2 ]
 Transfer:       [ Copy1 ]     [ Copy2 ]     [ Copy3 ]
 ```
 
-Below are some examples. 
+This technique is similar to the double-buffering technique used in inference systems.
+
+The `DataLoader()` can be use with the similar idea to achieve concurrency, with arguments like `pin_memory=True` and `non_blocking=True`.
+
+Below are some code examples. 
+
+Without double buffering and without pinned memory:
+
+```python
+import torch
+
+device = torch.device("cuda")
+
+batch_size = 10_000_000
+num_steps = 10
+
+host_buffer = torch.randn(batch_size) # Regular pageable host memory (NOT pinned)
+device_buffer = torch.empty(batch_size, device=device) # Single device buffer
+
+torch.cuda.synchronize()
+
+for step in range(num_steps):
+
+    # 1. Blocking H2D copy
+    device_buffer.copy_(host_buffer)  # blocking copy
+
+    # 2. GPU compute (default stream)
+    y = device_buffer * 2.0
+
+    # Optional: force full sync each iteration
+    torch.cuda.synchronize()
+```
+
+{{< figure src="./5_no_double_buffer_trace.png" caption="Figure 5.1: No overlap" align="center" >}}
 
 With double buffering:
 
@@ -233,33 +263,4 @@ for step in range(num_steps):
 torch.cuda.synchronize()
 ```
 
-{{< figure src="./5_double_buffer_trace.png" caption="Figure 5.1: Data-compute overlap with double buffering" align="center" >}}
-
-Without double buffering and without pinned memory:
-
-```python
-import torch
-
-device = torch.device("cuda")
-
-batch_size = 10_000_000
-num_steps = 10
-
-host_buffer = torch.randn(batch_size) # Regular pageable host memory (NOT pinned)
-device_buffer = torch.empty(batch_size, device=device) # Single device buffer
-
-torch.cuda.synchronize()
-
-for step in range(num_steps):
-
-    # 1. Blocking H2D copy
-    device_buffer.copy_(host_buffer)  # blocking copy
-
-    # 2. GPU compute (default stream)
-    y = device_buffer * 2.0
-
-    # Optional: force full sync each iteration
-    torch.cuda.synchronize()
-```
-
-{{< figure src="./5_no_double_buffer_trace.png" caption="Figure 5.2: No overlap" align="center" >}}
+{{< figure src="./5_double_buffer_trace.png" caption="Figure 5.2: Data-compute overlap with double buffering" align="center" >}}
