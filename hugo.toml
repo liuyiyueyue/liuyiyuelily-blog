@@ -1,5 +1,5 @@
 baseURL = 'https://liuyiyueyue.github.io/'
-title = 'Yiyue Liu Blog'
+title = "Yiyue Liu's Blog"
 theme = 'typo'
 
 # Google analytics code
