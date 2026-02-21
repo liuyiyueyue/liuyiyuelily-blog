@@ -52,4 +52,3 @@ with profile(
 torch.cuda.synchronize()
 
 prof.export_chrome_trace("5_double_buffer_trace.json")
-print("Overlap trace exported.")

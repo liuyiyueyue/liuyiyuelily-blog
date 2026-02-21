@@ -1,6 +1,5 @@
 import torch
 from torch.profiler import profile, record_function, ProfilerActivity
-import time
 
 device = torch.device("cuda")
 
@@ -16,4 +15,3 @@ with profile(
         z = torch.randn(50_000_000, device=device)
 
 prof.export_chrome_trace("2_gpu_trace.json")
-

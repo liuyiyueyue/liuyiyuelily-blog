@@ -28,4 +28,3 @@ with profile(
         torch.cuda.synchronize()  # force strict serialization
 
 prof.export_chrome_trace("5_no_double_buffer_trace.json")
-print("Non-overlap trace exported.")
