@@ -1,0 +1,97 @@
+#include <cstdio>
+#include <cuda_runtime.h>
+
+#define CHECK_CUDA(call)                                      \
+do {                                                           \
+    cudaError_t err = call;                                   \
+    if (err != cudaSuccess) {                                  \
+        fprintf(stderr, "CUDA error %s:%d: %s\n",              \
+                __FILE__, __LINE__, cudaGetErrorString(err));  \
+        exit(EXIT_FAILURE);                                    \
+    }                                                           \
+} while (0)
+
+const int N = 10'000'000;
+const int num_streams = 4;
+
+__global__ void kernel(float* data, int n)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        data[idx] *= 2.0f;
+    }
+}
+
+int main()
+{
+    size_t transfer_size = N * sizeof(float);
+    size_t elements_per_stream = N / num_streams;
+    size_t bytes_per_stream = elements_per_stream * sizeof(float);
+
+    float *host_mem;
+    float *device_mem;
+
+    // Allocate pinned host memory
+    CHECK_CUDA(cudaMallocHost((void **)&host_mem, transfer_size));
+
+    // Initialize
+    for (int i = 0; i < N; i++)
+        host_mem[i] = 1.0f;
+
+    CHECK_CUDA(cudaMalloc((void **)&device_mem, transfer_size));
+
+    // Create streams
+    cudaStream_t streams[num_streams];
+    for (int i = 0; i < num_streams; i++) {
+        CHECK_CUDA(cudaStreamCreate(&streams[i]));
+    }
+
+    int block = 256;
+
+    // Launch async copies + kernels per stream
+    for (int i = 0; i < num_streams; i++) {
+
+        size_t offset_elements = i * elements_per_stream;
+        float* h_ptr = host_mem + offset_elements;
+        float* d_ptr = device_mem + offset_elements;
+
+        CHECK_CUDA(cudaMemcpyAsync(
+            d_ptr,
+            h_ptr,
+            bytes_per_stream,
+            cudaMemcpyHostToDevice,
+            streams[i]));
+
+        int grid = (elements_per_stream + block - 1) / block;
+
+        kernel<<<grid, block, 0, streams[i]>>>(d_ptr, elements_per_stream);
+        CHECK_CUDA(cudaGetLastError());
+    }
+
+    // Wait for all streams
+    for (int i = 0; i < num_streams; i++) {
+        CHECK_CUDA(cudaStreamSynchronize(streams[i]));
+    }
+
+    // Cleanup
+    for (int i = 0; i < num_streams; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+
+    cudaFree(device_mem);
+    cudaFreeHost(host_mem);
+
+    printf("Multi-stream done.\n");
+    return 0;
+}
+
+/*
+
+# Compile 
+nvcc -O2 multi_stream.cu -o multi_stream
+
+# Profile with Nsight Systems
+nsys profile -o multi_stream_report ./multi_stream
+nsys-ui multi_stream_report.qdrep
+
+*/

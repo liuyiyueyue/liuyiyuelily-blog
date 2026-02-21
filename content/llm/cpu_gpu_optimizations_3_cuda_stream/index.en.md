@@ -119,7 +119,7 @@ As a result, transfers in the same direction are typically serialized,
 while copy and compute can overlap, leading to a pipelined execution pattern.
 
 
-Comparing serial version and multi stream version of the memcpy using a graph below, 
+Comparing serial version and multi stream version of the memcpy using a diagram below, 
 we can see the concurrency reduced the total execution time and bubbles.
 ```
 Time →
@@ -133,11 +133,11 @@ Copy Engine: |────H2D────|────H2D────|───�
 GPU:                     |───Kernel───|───Kernel───|───Kernel───|
 ```
 
-{{< figure src="./images/single_stream_report.png" caption="Figure 1: Nsight Systems profile with a single CUDA stream." align="center" >}}
+Below are Nsight profile examples:
 
-{{< figure src="./images/multi_stream_report.png" caption="Figure 2: Nsight Systems profile with multiple CUDA streams." align="center" >}}
+{{< figure src="./images/single_stream_report.png" caption="Figure 1: Nsight Systems profile with a single CUDA stream. Source code: [single_stream.txt](./code/single_stream.txt)." align="center" >}}
 
-
+{{< figure src="./images/multi_stream_report.png" caption="Figure 2: Nsight Systems profile with multiple CUDA streams. Source code: [multi_stream.txt](./code/multi_stream.txt)." align="center" >}}
 
 
 

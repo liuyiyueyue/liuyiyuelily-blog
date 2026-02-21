@@ -1,0 +1,82 @@
+#include <cstdio>
+#include <cuda_runtime.h>
+
+#define CHECK_CUDA(call)                                      \
+do {                                                           \
+    cudaError_t err = call;                                   \
+    if (err != cudaSuccess) {                                  \
+        fprintf(stderr, "CUDA error %s:%d: %s\n",              \
+                __FILE__, __LINE__, cudaGetErrorString(err));  \
+        exit(EXIT_FAILURE);                                    \
+    }                                                           \
+} while (0)
+
+const int N = 10'000'000;
+
+__global__ void kernel(float* in, float* out)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        out[idx] = in[idx] * 2.0f;
+    }
+}
+
+int main()
+{
+    size_t transfer_size = N * sizeof(float);
+
+    float *host_mem;
+    float *device_mem;
+
+    // Allocate pinned host memory
+    CHECK_CUDA(cudaMallocHost((void **)&host_mem, transfer_size));
+
+    // Initialize host data
+    for (int i = 0; i < N; i++) {
+        host_mem[i] = 1.0f;
+    }
+
+    // Allocate device memory
+    CHECK_CUDA(cudaMalloc((void **)&device_mem, transfer_size));
+
+    // Create stream
+    cudaStream_t s;
+    CHECK_CUDA(cudaStreamCreate(&s));
+
+    // Launch configuration
+    int block = 256;
+    int grid  = (N + block - 1) / block;
+
+    // Async copy + kernel in SAME stream (no overlap)
+    CHECK_CUDA(cudaMemcpyAsync(
+        device_mem,
+        host_mem,
+        transfer_size,
+        cudaMemcpyHostToDevice,
+        s));
+
+    kernel<<<grid, block, 0, s>>>(device_mem, device_mem);
+
+    CHECK_CUDA(cudaGetLastError());
+
+    CHECK_CUDA(cudaStreamSynchronize(s));
+
+    // Cleanup
+    CHECK_CUDA(cudaFree(device_mem));
+    CHECK_CUDA(cudaFreeHost(host_mem));
+    CHECK_CUDA(cudaStreamDestroy(s));
+
+    printf("Done.\n");
+    return 0;
+}
+
+/*
+
+# Compile 
+nvcc -O2 single_stream.cu -o single_stream
+
+# Profile with Nsight Systems
+nsys profile -o single_stream_report ./single_stream
+nsys-ui single_stream_report.qdrep
+
+*/

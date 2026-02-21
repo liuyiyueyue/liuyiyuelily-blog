@@ -179,7 +179,7 @@ This technique is similar to the double-buffering technique used in inference sy
 
 The `DataLoader()` can be use with the similar idea to achieve concurrency, with arguments like `pin_memory=True` and `non_blocking=True`.
 
-Below are some code examples. 
+Below are some code examples and `torch.profiler` profiles. 
 
 Without double buffering and without pinned memory:
 

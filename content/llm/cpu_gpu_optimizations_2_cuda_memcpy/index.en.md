@@ -6,7 +6,7 @@ tags: ["llm", "optimization", "cuda"]
 
 This is the second blog of the "CPU-GPU Optimization" series. Using the foundations 
 built from the previous blog, we will discuss 4 types of memory allocation and transfer 
-methods in CUDA.
+methods in CUDA. Then we will showcase a performance analysis with flamegraph profiles.
 
 
 #### 1. Normal Memcpy
