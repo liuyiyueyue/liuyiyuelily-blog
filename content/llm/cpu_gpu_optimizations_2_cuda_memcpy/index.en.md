@@ -1,5 +1,5 @@
 ---
-title: "[2/4] CPU-GPU Optimization: CUDA Memory Allocation and Memcpy"
+title: "[2/4] CPU-GPU Optimization: CUDA Memory Allocation and Memcpy Methods"
 date: 2026-02-05
 tags: ["llm", "optimization", "cuda"]
 ---
@@ -16,7 +16,7 @@ methods in CUDA.
 - `malloc` to allocate memory on CPU.
 - `cudaMalloc` to allocate memory on GPU.
 - `cudaMemcpy` to transfer data from the CPU memory to the GPU memory. This call hides a subtle performance trap. 
-As described in the [Compare to “bounce-buffer”](/llm/cpu_gpu_optimizations_1_kernel/#compare-to-bounce-buffer) 
+As described in the [Compare to "bounce-buffer"](/llm/cpu_gpu_optimizations_1_kernel/#compare-to-bounce-buffer) 
 section of the previous blog, the kernel implicitly allocates a temporary buffer and results in **an extra CPU memcpy**.
 - `free` to free the CPU memory.
 - `cudaFree` to free the GPU memory.
@@ -61,7 +61,7 @@ cudaFree(device_mem);
 ```
 
 References: 
-1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory
+- CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory
 
 
 #### 3. Zero-copy
@@ -75,9 +75,9 @@ and **maps this memory into GPU address space**.
 - Zero-copy uses **no device memory**; data always resides in **pinned host memory**. So there is no `cudaMemcpy` needed. 
 The CUDA driver registers the host physical pages with the GPU MMU and installs GPU page table entries that map GPU virtual addresses to CPU physical addresses.
 During kernel execution, the GPU directly reads and writes host memory **via PCIe** (or NVLink) memory transactions rather than DMA transfers.
-- Zero-copy turns compute intensity into “memory-access intensity.” Thus, it is rarely used for compute-intensive workloads such as ML and HPC.
+- Zero-copy turns compute intensity into "memory-access intensity." Thus, it is rarely used for compute-intensive workloads such as ML and HPC.
 
-The below example shows a GPU kernel directly accesses host memory without an explicit cudaMemcpy:
+The below example shows a GPU kernel directly accesses host memory without an explicit `cudaMemcpy`:
 ```cuda
 __global__ void editData(float* data, int N) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -101,7 +101,7 @@ cudaFreeHost(host_mem);
 ```
 
 References: 
-1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#zero-copy
+- CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#zero-copy
 
 
 #### 4. Unified Memory (UVM)
@@ -112,7 +112,7 @@ References:
 When it is called, the kernel driver only reserves a virtual address (VA), but CPU or GPU physical adress (PA) pages are populated lazily on the first access.
 
 - Different from zero-copy and pinned memory approaches, with UVM, CPU and all GPUs share the **same virtual address space**. 
-At any moment, a VA maps to **one side’s** physical pages: either CPU DRAM or GPU HBM. 
+At any moment, a VA maps to **one side's** physical pages: either CPU DRAM or GPU HBM. 
 
 - With UVM, there is no need for a device pointer via `cudaHostGetDevicePointer`. 
 Pages migrate on demand between CPU and GPU memory via **CPU/GPU page faults**, with residency managed by the CUDA driver.
@@ -124,7 +124,7 @@ Vice versa, but it's a GPU page fault.
 
 - ML / HPC rarely use UVM as well.
 
-The below example shows an example of UVM without `cudaHostGetDevicePointer`:
+The below example shows an example of UVM:
 ```cuda
 float *mem;
 cudaMallocManaged((void **)&mem, N * sizeof(float));
@@ -139,4 +139,21 @@ cudaFree(mem);
 ```
 
 References:
-1. CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#unified-virtual-addressing
+- CUDA Official Documentation: https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#unified-virtual-addressing
+
+
+#### Overhead of Pinning Memory
+
+The previous post briefly mentions the cost introduced by pinning memory. In this section, we dive deep 
+into it. 
+
+Pinning memory is not free: `cudaMallocHost`/`cudaHostAlloc`/`cudaHostRegister` must lock physical pages and update page tables, which can take noticeable time compared with ordinary `malloc`.
+This setup cost is usually paid on the CPU and can dominate workloads that transfer small buffers or frequently allocate/free pinned regions. Excessive pinned memory also reduces paging flexibility for the OS, which may hurt overall system responsiveness under memory pressure.
+
+In practice, pin once and reuse buffers across many transfers so the higher one-time pinning cost is amortized by faster H2D/D2H bandwidth.
+
+{{< figure src="./images/pageable_flamegraph.png" caption="Figure 1: Flamegraph for using malloc and pagable memory. Page faults (via `asm_exc_page_fault`) triggered by `malloc` and `host_mem[i] = 1.0f` take ~56% of total time. Source code: [pageable_flame.cu](./code/pageable_flame.txt)." >}}
+
+{{< figure src="./images/pin_mem_flamegraph.png" caption="Figure 2: Flamegraph for using pinned memory. Pinning host memory (via `pin_user_pages`) takes ~90% of `cudaMallocHost` time. Source code: [pin_mem_flame.cu](./code/pin_mem_flame.txt)." >}}
+
+{{< figure src="./images/zerocopy_flamegraph.png" caption="Figure 3: Flamegraph for using zero-copy. Pinning host memory (via `pin_user_pages`) takes ~90% of `cudaHostAlloc` time. Source code: [zerocopy_flame.cu](./code/zerocopy_flame.txt)." >}}
