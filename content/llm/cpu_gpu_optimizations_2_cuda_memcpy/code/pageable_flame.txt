@@ -42,3 +42,32 @@ int main() {
     printf("Done.\n");
     return 0;
 }
+
+/*
+# How to run this CUDA script
+
+# Step 1 - Install Dependencies for perf
+sudo apt update
+sudo apt install -y linux-tools-common linux-tools-generic linux-tools-$(uname -r)
+sudo apt install -y linux-headers-$(uname -r) git perl xdg-utils
+
+# Step 2 - Get the FlameGraph toolkit
+#        - a new folder called FlameGraph is cloned
+git clone https://github.com/brendangregg/FlameGraph.git
+
+# only done once:
+echo 'export PATH=$PATH:<your path to>/FlameGraph' >> ~/.bashrc
+source ~/.bashrc
+
+# Step 3 - Compile the CUDA code
+nvcc -O2 pageable_flame.cu -o pageable_flame
+
+# Step 4 - Record CPU Samples
+sudo perf record -F 999 -g ./pageable_flame
+
+# Step 5 - Generate the Flame Graph
+sudo perf script | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > pageable_flamegraph.svg
+
+# Step 6 Optional - check if page fault symbols are in the svg
+grep -iE "asm_exc_page_fault" pageable_flamegraph.svg
+*/
