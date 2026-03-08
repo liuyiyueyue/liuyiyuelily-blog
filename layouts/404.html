@@ -1,0 +1,16 @@
+{{ define "main" }}
+
+<script>
+  if (window.location.pathname === "/resume") {
+    window.location.replace("/resume/" + window.location.search + window.location.hash);
+  }
+</script>
+
+<div class="not-found">
+  <div>
+    <h1> typo? </h1>
+    <p> Click <a href="/">here</a> to return home </p>
+  </div>
+</div>
+
+{{ end }}
