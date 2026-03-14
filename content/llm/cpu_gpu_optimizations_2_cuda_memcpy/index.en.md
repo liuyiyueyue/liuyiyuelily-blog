@@ -152,6 +152,8 @@ This setup cost is usually paid on the CPU and can dominate workloads that trans
 
 In practice, pin once and reuse buffers across many transfers so the higher one-time pinning cost is amortized by faster H2D/D2H bandwidth.
 
+Below are Flamegraph profiles:
+
 {{< figure src="./images/pageable_flamegraph.png" caption="Figure 1: Flamegraph for using malloc and pagable memory. Page faults (via `asm_exc_page_fault`) triggered by `malloc` and `host_mem[i] = 1.0f` take ~56% of total time. Source code: [pageable_flame.cu](./code/pageable_flame.txt)." >}}
 
 {{< figure src="./images/pin_mem_flamegraph.png" caption="Figure 2: Flamegraph for using pinned memory. Pinning host memory (via `pin_user_pages`) takes ~90% of `cudaMallocHost` time. Source code: [pin_mem_flame.cu](./code/pin_mem_flame.txt)." >}}
