@@ -1,6 +1,6 @@
 ---
 title: "Distributed Training: Parallelism Strategies"
-date: 2025-12-08
+date: 2025-12-01
 tags: ["llm", "distributed-training", "parallelism"]
 ---
 
@@ -24,8 +24,8 @@ This post gives a high-level overview of both. Later posts will examine each str
 
 
 **Model parallelism** splits the model itself, including weights, optimizer states, and gradients, across GPUs.
-- **Pipeline parallelism (PP)** runs different layers of the model on different GPUs
-- **Tensor parallelism (TP)** breaks up the math for a single operation such as a matrix multiplication within a layer
+- **Pipeline parallelism (PP)** runs different layers of the model on different GPUs. (GPipe)
+- **Tensor parallelism (TP)** breaks up the math for a single operation such as a matrix multiplication within a layer. (GShard)
 - **Mixture-of-Experts parallelism (EP)** processes each example with only a subset of the experts in each layer.
 - **Sequence parallelism (SP)** splits along the sequence length.
 
