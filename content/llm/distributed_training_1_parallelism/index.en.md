@@ -54,17 +54,17 @@ A typical development workflow for distributed training looks like this:
 
 5. For extremely large models, you may need to combine multiple distributed strategies, including pipeline parallelism, tensor parallelism, data parallelism, and `ZeRO`.
 
-[^1]: PyTorch Distributed: Experiences on Accelerating Data Parallel Training. https://arxiv.org/abs/2006.15704
-[^2]: Efficient Large-Scale Language Model Training on GPU Clusters. https://arxiv.org/abs/2104.04473
-[^3]: Mesh-TensorFlow: Deep Learning for Supercomputers. https://arxiv.org/abs/1811.02084
-[^4]: Colossal-AI: A Unified Deep Learning System For Large-Scale Parallel Training. https://arxiv.org/abs/2110.14883
-[^5]: PipeDream: Fast and Efficient Pipeline Parallel DNN Training. https://arxiv.org/abs/1806.03377
-[^6]: Memory-Efficient Pipeline-Parallel DNN Training. https://arxiv.org/abs/2006.09503
-[^7]: HetPipe: Enabling Large DNN Training on (Whimpy) Heterogeneous GPU Clusters through Integration of Pipelined Model Parallelism and Data Parallelism. https://www.usenix.org/conference/atc20/presentation/park
-[^8]: GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism. https://arxiv.org/abs/1811.06965
-[^9]: DAPPLE: A Pipelined Data Parallel Approach for Training Large Models. https://arxiv.org/abs/2007.01045
-[^10]: ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. https://dl.acm.org/doi/10.5555/3433701.3433727
-[^11]: Fully Sharded Data Parallel: Faster AI Training with Fewer GPUs. https://engineering.fb.com/2021/07/15/open-source/fsdp/
-[^12]: Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. https://arxiv.org/abs/1701.06538
-[^13]: GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. https://arxiv.org/abs/2006.16668
-[^14]: Chimera: Efficiently Training Large-Scale Neural Networks with Bidirectional Pipelines. https://dl.acm.org/doi/10.1145/3458817.3476145
+[^1]: PyTorch Distributed: Experiences on Accelerating Data Parallel Training. arXiv, June 28, 2020. <https://arxiv.org/abs/2006.15704>
+[^2]: Efficient Large-Scale Language Model Training on GPU Clusters. arXiv, April 9, 2021. <https://arxiv.org/abs/2104.04473>
+[^3]: Mesh-TensorFlow: Deep Learning for Supercomputers. arXiv, November 5, 2018. <https://arxiv.org/abs/1811.02084>
+[^4]: Colossal-AI: A Unified Deep Learning System for Large-Scale Parallel Training. arXiv, October 28, 2021. <https://arxiv.org/abs/2110.14883>
+[^5]: PipeDream: Fast and Efficient Pipeline Parallel DNN Training. arXiv, June 8, 2018. <https://arxiv.org/abs/1806.03377>
+[^6]: Memory-Efficient Pipeline-Parallel DNN Training. arXiv, June 16, 2020. <https://arxiv.org/abs/2006.09503>
+[^7]: HetPipe: Enabling Large DNN Training on (Whimpy) Heterogeneous GPU Clusters through Integration of Pipelined Model Parallelism and Data Parallelism. USENIX ATC 2020. <https://www.usenix.org/conference/atc20/presentation/park>
+[^8]: GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism. arXiv, November 16, 2018. <https://arxiv.org/abs/1811.06965>
+[^9]: DAPPLE: A Pipelined Data Parallel Approach for Training Large Models. arXiv, July 2, 2020. <https://arxiv.org/abs/2007.01045>
+[^10]: ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. arXiv, October 4, 2019. <https://arxiv.org/abs/1910.02054>
+[^11]: Fully Sharded Data Parallel: Faster AI Training with Fewer GPUs. Meta Engineering, July 15, 2021. <https://engineering.fb.com/2021/07/15/open-source/fsdp/>
+[^12]: Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. arXiv, January 23, 2017. <https://arxiv.org/abs/1701.06538>
+[^13]: GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. arXiv, June 30, 2020. <https://arxiv.org/abs/2006.16668>
+[^14]: Chimera: Efficiently Training Large-Scale Neural Networks with Bidirectional Pipelines. SC '21 / ACM, November 13, 2021. <https://dl.acm.org/doi/10.1145/3458817.3476145>
