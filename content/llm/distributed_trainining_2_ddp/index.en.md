@@ -1,6 +1,6 @@
 ---
 title: "Distributed Training: PyTorch DP vs DDP"
-date: 2026-03-17
+date: 2025-12-07
 tags: ["llm", "pytorch", "distributed-training"]
 ---
 
