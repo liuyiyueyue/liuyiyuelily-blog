@@ -19,14 +19,14 @@ This post gives a high-level overview of both. Later posts will examine each str
 
 ### Common Parallelism Strategies
 **Data parallelism (DP)** runs different subsets of a batch on different GPUs.
-- Common approaches evolve from [parameter-server style **DP** to distributed style **DDP**](../distributed_trainining_2_ddp/), and then to memory-optimized methods such as **ZeRO and FSDP**
+- Common approaches evolve from [parameter-server style **DP** to distributed style **DDP**](../distributed_trainining_2_ddp/), and then to memory-optimized methods such as **ZeRO and FSDP** [^1] [^10] [^11].
 - DP sometimes also refers to the number of nodes, data-parallel degrees, or replica count
 
 
 **Model parallelism** splits the model itself, including weights, optimizer states, and gradients, across GPUs.
-- **Pipeline parallelism (PP)** runs different layers of the model on different GPUs. (GPipe)
-- **Tensor parallelism (TP)** breaks up the math for a single operation such as a matrix multiplication within a layer. (GShard)
-- **Mixture-of-Experts parallelism (EP)** processes each example with only a subset of the experts in each layer.
+- **Pipeline parallelism (PP)** runs different layers of the model on different GPUs. Common approaches include PipeDream, PipeDream-2BW, HetPipe, GPipe, DAPPLE, and Chimera [^5] [^6] [^7] [^8] [^9] [^14].
+- **Tensor parallelism (TP)** breaks up the math for a single operation such as a matrix multiplication within a layer. Common approaches include Megatron-LM, Mesh-TensorFlow, Colossal-AI, and GShard [^2] [^3] [^4] [^13].
+- **Mixture-of-Experts parallelism (EP)** processes each example with only a subset of the experts in each layer [^12] [^13].
 - **Sequence parallelism (SP)** splits along the sequence length.
 
 
@@ -41,7 +41,7 @@ All these parallelism strategies can be used together and form a multi-dimension
 | PaLM / GPT-4 class systems | 4–5D (DP + TP + PP + SP + EP)                 |
 
 
-### Optimization Steps
+### Common Optimization Steps
 A typical development workflow for distributed training looks like this:
 
 1. First, optimize single-GPU performance and maximize memory utilization as much as possible.
@@ -53,3 +53,18 @@ A typical development workflow for distributed training looks like this:
 4. If the model scale increases further, consider model parallel strategies such as pipeline parallelism or tensor parallelism.
 
 5. For extremely large models, you may need to combine multiple distributed strategies, including pipeline parallelism, tensor parallelism, data parallelism, and `ZeRO`.
+
+[^1]: PyTorch Distributed: Experiences on Accelerating Data Parallel Training. https://arxiv.org/abs/2006.15704
+[^2]: Efficient Large-Scale Language Model Training on GPU Clusters. https://arxiv.org/abs/2104.04473
+[^3]: Mesh-TensorFlow: Deep Learning for Supercomputers. https://arxiv.org/abs/1811.02084
+[^4]: Colossal-AI: A Unified Deep Learning System For Large-Scale Parallel Training. https://arxiv.org/abs/2110.14883
+[^5]: PipeDream: Fast and Efficient Pipeline Parallel DNN Training. https://arxiv.org/abs/1806.03377
+[^6]: Memory-Efficient Pipeline-Parallel DNN Training. https://arxiv.org/abs/2006.09503
+[^7]: HetPipe: Enabling Large DNN Training on (Whimpy) Heterogeneous GPU Clusters through Integration of Pipelined Model Parallelism and Data Parallelism. https://www.usenix.org/conference/atc20/presentation/park
+[^8]: GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism. https://arxiv.org/abs/1811.06965
+[^9]: DAPPLE: A Pipelined Data Parallel Approach for Training Large Models. https://arxiv.org/abs/2007.01045
+[^10]: ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. https://dl.acm.org/doi/10.5555/3433701.3433727
+[^11]: Fully Sharded Data Parallel: Faster AI Training with Fewer GPUs. https://engineering.fb.com/2021/07/15/open-source/fsdp/
+[^12]: Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. https://arxiv.org/abs/1701.06538
+[^13]: GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. https://arxiv.org/abs/2006.16668
+[^14]: Chimera: Efficiently Training Large-Scale Neural Networks with Bidirectional Pipelines. https://dl.acm.org/doi/10.1145/3458817.3476145
