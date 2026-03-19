@@ -1,0 +1,110 @@
+---
+title: "Transformer"
+date: 2023-07-12
+tags: ["llm", "transformer"]
+math: true
+---
+
+## Overview
+
+**Transformer** is a neural network architecture designed to process sequences. It was introduced as an alternative to RNN-based models, with the core idea that a model should not pass information only step by step through time. Instead, it should be able to directly look at the whole sequence and decide which parts matter most.
+
+The key mechanism is **attention**, which aggregates information from a sequence by assigning different weights to different tokens. Because of this, a Transformer can model long-range dependencies more effectively than traditional recurrent models.
+
+A standard Transformer contains an **encoder** and a **decoder**.
+
+- The **encoder** is built from repeated blocks of multi-head self-attention, residual connections, feed-forward layers, and layer normalization.
+- The **decoder** is built from masked multi-head self-attention, encoder-decoder attention, feed-forward layers, residual connections, and layer normalization.
+
+![Transformer architecture](transformer.png)
+
+In practice, modern large language models often use decoder-only variants, but the original encoder-decoder design is still the standard starting point for understanding the architecture.
+
+## Transformer vs. RNN
+
+Transformer and RNN both aim to model sequence data, and both use nonlinear layers such as MLPs to transform representations into richer semantic spaces. The main difference is how they pass sequence information.
+
+In an **RNN**, information is propagated recurrently:
+
+- the hidden state at time step `t` is passed to time step `t + 1`
+- each step depends on previous steps in order
+- computation is naturally sequential
+
+This design makes it difficult to parallelize training across tokens. It also makes learning long-range dependencies harder, because information has to travel through many recurrent steps.
+
+In a **Transformer**, sequence information is propagated through attention:
+
+- each token can directly attend to all relevant tokens in the sequence
+- the model does not need to move information one step at a time
+- training is much more parallelizable
+
+So the difference is not that one understands sequences and the other does not. Both do. The difference is **how sequence information is transmitted** (如何传递序列信息):
+
+- **RNN**: passes information forward through recurrent hidden states
+- **Transformer**: aggregates information globally through attention
+
+
+## Attention and Its Math
+
+Attention measures how much one token should focus on another token. It can be understood as a weighted aggregation of sequence information, regardless of distance in the sequence.
+
+At a high level:
+
+- `weight = similarity(query, key)`
+- `output = weighted sum of values`
+
+### Self-Attention
+
+In **self-attention**, `Q`, `K`, and `V` all come from the same input sequence:
+
+- **Query (Q)**: what the current token is looking for
+- **Key (K)**: what each token offers for matching
+- **Value (V)**: the information carried by each token
+
+So self-attention means that each token compares itself with all tokens in the same sequence and then gathers the most relevant information.
+
+### Masked Attention
+
+In **masked self-attention**, token `t` is not allowed to see tokens after `t`. This is required in autoregressive language models, where prediction at position `t` must not use future tokens.
+
+### Multi-Head Attention
+
+**Multi-head attention** means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
+
+### Scaled Dot-Product Attention
+
+The Transformer paper defines scaled dot-product attention as:
+
+{{< rawhtml >}}
+$$
+\operatorname{Attention}(Q, K, V)
+=
+\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+{{< /rawhtml >}}
+
+Here, 
+- $Q$ is the query matrix, $K$ is the key matrix, and $V$ is the value matrix. 
+- The term $QK^\top$ is the inner product (cosine) and measures **similarity** between tokens.
+- $\sqrt{d_k}$ rescales the scores for numerical stability.
+- $\frac{QK^\top}{\sqrt{d_k}}$ is called the **attention weight matrix**.
+- `softmax` turns the scores into attention weights used to combine the values.
+
+So we calculated the attetion using two matrix multiplications. This makes parallel execution easy.
+
+![Attention mechanism](attention.png)
+
+
+## Layer Norm vs. Batch Norm
+
+Both layer normalization and batch normalization are used to stabilize training, but they normalize over different dimensions.
+
+**Batch normalization** computes statistics across the batch. Its behavior depends on the distribution of examples inside the mini-batch. This works well in many vision settings, but it is less suitable for sequence models when:
+
+- sequence lengths vary a lot
+- token distributions change across positions
+- batch statistics become unstable or less meaningful
+
+**Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.
+
+This is why Transformers typically use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
