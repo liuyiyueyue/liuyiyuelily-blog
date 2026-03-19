@@ -10,7 +10,7 @@ As training datasets grow, training takes longer.
 
 At the same time, models are getting larger, and some no longer fit on a single device without running out of memory.
 
-Distributed training addresses these scaling limits by partitioning computation across multiple devices or nodes.
+Distributed training addresses these scaling limits by partitioning computation across multiple devices or nodes, and trade communication overhead for lower memory usage.
 
 This is usually done through sharding or parallelism strategies, which mainly fall into two categories: **data parallelism**, which partitions data, and **model parallelism**, which partitions the model.
 
