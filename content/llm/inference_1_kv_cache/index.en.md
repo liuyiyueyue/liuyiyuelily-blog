@@ -2,6 +2,7 @@
 title: "LLM Inference: KV Cache"
 date: 2023-12-13
 tags: ["llm", "inference", "optimization"]
+math: true
 ---
 
 
@@ -15,12 +16,22 @@ It is important to note that KV cache only applies to the **decoder**, together 
 ### Visual Intuition
 The diagrams below show the difference between regular masked self-attention and the KV-cache version used during autoregressive decoder stage. [^1]
 
-Without KV Cache:
+Without using KV Cache, we need the whole Q matrix to compute attention:
+
+$$
+Q K^\top V
+$$
+
 ![Masked self-attention over the current decoder step](masked-self-attention-step.png)
 
 ![Masked self-attention over the full sequence](masked-self-attention-full.png)
 
-With KV Cache:
+Using KV Cache, we only need the last line q_t:
+
+$$
+q_t K^\top V
+$$
+
 ![KV cache reusing previously computed keys and values](kv-cache-step.png)
 
 ### Why Is There a KV Cache but No Q Cache?
