@@ -8,8 +8,8 @@ tags: ["llm", "inference", "optimization"]
 ### What Are Prefill and Decode?
 
 In LLM inference, prefill and decode are two distinct phases of text generation: 
-- Prefill phase is the first forward pass through the model, where the **entire prompt** (all user input tokens) is processed. It builds the **initial KV cache**.
-- Decode phase produces **one new token at a time** (or a few tokens in parallel if speculative/parallel decoding is used). At each step, it uses the KV from the prefill, only calculates the attention on the newest token, and extend the KV cache.
+- Prefill phase is the first forward pass through the model, where the **entire prompt** (all user input tokens) is processed. It builds the **initial KV cache**. It's also called Context Encoding.
+- Decode phase produces **one new token at a time** (or a few tokens in parallel if speculative/parallel decoding is used). At each step, it uses the KV from the prefill, only calculates the attention on the newest token, and extend the KV cache. It's also called Token Generation / tokengen.
 
 ![Prefill and decode latency breakdown](prefill-decode-latency.jpg)
 
