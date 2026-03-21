@@ -89,7 +89,7 @@ A typical inference iteration looks like this:
   - Example: given $z=x^2y+3y, x=t^2, y=\sin(t)$, then $\frac{dz}{dt} = \frac{\partial}{\partial x}(x^2y+3y) \cdot \frac{d}{dt}t^2 + \frac{\partial}{\partial y}(x^2y+3y) \cdot \frac{d}{dt}\sin(t) = 2xy \cdot 2t + (x^2 + 3)\cdot \cos(t)$
 - Now, for **multivariable** functions, the same idea becomes the **Jacobian chain rule**:
   - Given $\mathbf{y}=f(\mathbf{u}), \mathbf{u}=g(\mathbf{x})$, that is, $\mathbf{y}=f(g(\mathbf{x}))$, the derivative with respect to $\mathbf{x}$ is given by the Jacobian chain rule: $J_{f\circ g}=J_f\cdot J_g$, where $J_f = \frac{\partial u}{\partial y}$ and $J_f = \frac{\partial u}{\partial x}$
-  - Jacobian matrix: $J_f =\begin{bmatrix}\frac{\partial y_1}{\partial x_1} & \frac{\partial y_1}{\partial x_2} & \cdots & \frac{\partial y_1}{\partial x_n} \\\frac{\partial y_2}{\partial x_1} & \frac{\partial y_2}{\partial x_2} & \cdots & \frac{\partial y_2}{\partial x_n} \\\vdots & \vdots & \ddots & \vdots \\\frac{\partial y_m}{\partial x_1} & \frac{\partial y_m}{\partial x_2} & \cdots & \frac{\partial y_m}{\partial x_n}\end{bmatrix}$
+  - Jacobian matrix: $J_f = \begin{bmatrix}\frac{\partial y_1}{\partial x_1} & \frac{\partial y_1}{\partial x_2} & \cdots & \frac{\partial y_1}{\partial x_n} \\\\ \frac{\partial y_2}{\partial x_1} & \frac{\partial y_2}{\partial x_2} & \cdots & \frac{\partial y_2}{\partial x_n} \\\\ \vdots & \vdots & \ddots & \vdots \\\\ \frac{\partial y_m}{\partial x_1} & \frac{\partial y_m}{\partial x_2} & \cdots & \frac{\partial y_m}{\partial x_n}\end{bmatrix}$
 
 **Forward and Backward Passes**
 
@@ -170,9 +170,9 @@ Different tasks require different metrics:
 
 | Metric | Formula | Meaning | Range |
 | --- | --- | --- | --- |
-| **Recall@k** | $\text{Recall@k} = \frac{\#\text{ relevant items in top k}}{\text{total relevant items}}$ | Fraction of relevant items retrieved in top-k | $[0, 1]$ |
-| **Precision@k** | $\frac{\#\text{ relevant items in top k}}{k}$ | Fraction of top-k items that are relevant | $[0, 1]$ |
-| **nDCG@k (Normalized Discounted Cumulative Gain)** | $\text{nDCG@k} = \frac{\text{DCG@k}}{\text{IDCG@k}}$ where $\text{DCG@k} = \sum_{i=1}^{k}\frac{2^{rel_i}-1}{\log_2(i+1)}$ | Rewards putting relevant items near the top | $[0, 1]$ |
+| **Recall@k** | $\text{Recall@k} = \frac{\text{\# relevant items in top k}}{\text{total relevant items}}$ | Fraction of relevant items retrieved in top-k | $[0, 1]$ |
+| **Precision@k** | $\frac{\#\{\text{relevant items in top } k\}}{k}$ | Fraction of top-k items that are relevant | $[0, 1]$ |
+| **nDCG@k (Normalized Discounted Cumulative Gain)** | $\frac{\mathrm{DCG}@k}{\mathrm{IDCG}@k}$ where $\mathrm{DCG}@k = \sum_{i=1}^{k}\frac{2^{rel_i}-1}{\log_2(i+1)}$ | Rewards putting relevant items near the top | $[0, 1]$ |
 
 
 ### Overfitting and Regularization
