@@ -16,13 +16,15 @@ A standard Transformer contains an **encoder** and a **decoder**.
 - The **encoder** is built from repeated blocks of multi-head self-attention, residual connections, feed-forward layers, and layer normalization.
 - The **decoder** is built from masked multi-head self-attention, encoder-decoder attention, feed-forward layers, residual connections, and layer normalization.
 
+Besides the encoder and decoder, the Transformer also includes embedding layers, positional encodings, and an output projection followed by a softmax layer.
+
 ![Transformer architecture](transformer.png)
 
 In practice, modern large language models often use decoder-only variants, but the original encoder-decoder design is still the standard starting point for understanding the architecture.
 
 ## Transformer vs. RNN
 
-Transformer and RNN both aim to model sequence data, and both use nonlinear layers such as MLPs to transform representations into richer semantic spaces. The main difference is how they pass sequence information.
+Transformer and RNN both aim to model sequence data, and both use nonlinear layers such as MLPs to transform representations into richer semantic spaces. The main difference is **how they pass sequence information** (如何传递序列信息).
 
 In an **RNN**, information is propagated recurrently:
 
@@ -30,7 +32,7 @@ In an **RNN**, information is propagated recurrently:
 - each step depends on previous steps in order
 - computation is naturally sequential
 
-This design makes it difficult to parallelize training across tokens. It also makes learning long-range dependencies harder, because information has to travel through many recurrent steps.
+This design makes it difficult to **parallelize training** across tokens (并行计算能力). It also makes learning **long-range dependencies** harder (全局信息交互), because information has to travel through many recurrent steps.
 
 In a **Transformer**, sequence information is propagated through attention:
 
@@ -38,7 +40,7 @@ In a **Transformer**, sequence information is propagated through attention:
 - the model does not need to move information one step at a time
 - training is much more parallelizable
 
-So the difference is not that one understands sequences and the other does not. Both do. The difference is **how sequence information is transmitted** (如何传递序列信息):
+In summary, the difference is not that one understands sequences and the other does not. Both do. The difference is how sequence information is transmitted:
 
 - **RNN**: passes information forward through recurrent hidden states
 - **Transformer**: aggregates information globally through attention
@@ -108,3 +110,13 @@ Both layer normalization and batch normalization are used to stabilize training,
 **Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.
 
 This is why Transformers typically use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
+
+
+## Positional Encoding
+
+Positional encoding provides the model with information about the positions of words in a sequence. Since the Transformer's self-attention mechanism does not naturally account for the order of elements in the sequence, positional encoding solves this by adding position information to each element's representation. In the original Transformer paper, positional encodings are defined using alternating sine and cosine functions.
+
+
+## FFN
+
+Feed-forward network (FFN) provides the model with nonlinear processing capacity. It operates independently on each position of the input, helping increase the model's complexity and expressive power.
