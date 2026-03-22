@@ -52,6 +52,55 @@ Typical dataset split:
   - validation set: 10-15%
   - test set: 10-15%
 
+A sample PyTorch code:
+
+```python
+# Set the model to training mode. Enables behaviors like dropout and batch normalization updates.
+model.train()
+
+for epoch in range(num_epochs):
+    # Loop over the dataset multiple times (one full pass = one epoch)
+
+    # Accumulate total loss for this epoch (for logging / averaging)
+    total_loss = 0
+
+    for images, labels in train_loader:
+        # Iterate over mini-batches from the dataset
+
+        # Move data to target device (CPU / GPU / accelerator)
+        images, labels = images.to(device), labels.to(device)
+
+        # Forward pass:
+        # Input → model → predictions (logits)
+        # Also builds computation graph for autograd
+        outputs = model(images)
+
+        # Compute scalar loss (e.g., cross-entropy)
+        # This connects outputs to ground truth and becomes the root for backprop
+        loss = criterion(outputs, labels)
+
+        # Clear previous gradients stored in model parameters
+        # PyTorch accumulates gradients by default, so must reset each step
+        optimizer.zero_grad()
+
+        # Backward pass:
+        # Compute gradients via backpropagation
+        # Autograd traverses computation graph and computes d(loss)/d(param)
+        # Results stored in param.grad
+        loss.backward()
+
+        # Update model parameters using computed gradients
+        optimizer.step()
+        
+        # Convert loss tensor to Python scalar and accumulate
+        total_loss += loss.item()
+        
+    # Compute average loss across all batches in this epoch
+    avg_loss = total_loss / len(train_loader)
+
+    print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
+```
+
 ### Inference Workflow
 
 A typical inference iteration looks like this:
@@ -61,6 +110,28 @@ A typical inference iteration looks like this:
 3. Run the **forward pass** to compute predictions.
 4. Postprocess the **model output** into the final label, score, or generated result.
 5. Return the result without updating weights or gradients (no backward pass).
+
+A sample PyTorch code:
+
+```python
+# Set model to evaluation mode (disable dropout, fix batchnorm behavior)
+model.eval()
+
+# Disable gradient computation to save memory and speed up inference
+with torch.no_grad():
+
+    # Iterate over batches of input data (no labels needed for pure inference)
+    for images in test_loader:
+
+        # Move input data to the same device as the model (CPU/GPU)
+        images = images.to(device)
+
+        # Run forward pass to get model outputs (logits)
+        outputs = model(images)
+
+        # Convert logits to predicted class indices
+        predictions = torch.argmax(outputs, dim=1)
+```
 
 ### Basic ML Algorithms
 
