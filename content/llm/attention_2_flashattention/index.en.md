@@ -52,4 +52,4 @@ The key difficulty is that softmax is a reduction over the whole row, so it does
 This is the core idea behind tiled softmax in FlashAttention: each block keeps track of a running maximum and a running normalization term, and these can be merged across blocks exactly. That is why FlashAttention can compute attention in tiles while still producing the exact softmax result.
 
 
-[^1]: FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness. arXiv, May 27, 2022. <https://arxiv.org/abs/2205.14135>
+[^1]: FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness. NeurIPS 2022. <https://proceedings.neurips.cc/paper_files/paper/2022/hash/7d57c32e20fd0a7a302cb81d36e40d5-Abstract-Conference.html>
