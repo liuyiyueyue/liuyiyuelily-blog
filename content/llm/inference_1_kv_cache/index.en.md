@@ -38,4 +38,16 @@ $$
 - In the decoder stage, each inference step only uses the **current query**. Once that step is finished, that query will not be reused in later steps, so there is no real benefit to caching `Q`.
 - In contrast, each new decoder step needs access to the **current and all previous** keys and values. The `K` and `V` tensors computed in this step will be used again immediately in the next step, which is why caching them speeds up inference.
 
+
+### How Big Is the KV Cache?
+
+```text
+KV cache size = num_layers × seq_len × num_kv_heads × head_dim × 2 × dtype_size
+```
+
+`2` accounts for K and V.
+
+The KV cache grows linearly with sequence length, which is why long-context inference becomes memory-intensive.
+
+
 [^1]: LLM 推理优化之 KV Cache. SayHelloCode, Zhihu. <https://zhuanlan.zhihu.com/p/673923443>
