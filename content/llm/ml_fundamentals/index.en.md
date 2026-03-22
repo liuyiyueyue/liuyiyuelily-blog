@@ -21,6 +21,7 @@ This post is a compact set of notes on the math and statistics foundations behin
 - [Activation Functions](#activation-functions)
 - [Normalization](#normalization)
 - [Probability and Statistics for Machine Learning](#probability-and-statistics-for-machine-learning)
+- [Uncategorized](#uncategorized)
 
 ### Basic Terms
 
@@ -440,3 +441,14 @@ Note
 | MAP | Add prior information to estimation | $\hat{\theta}{MAP}=\arg\max\theta P(x \mid \theta) P(\theta)$ |
 | Confidence Interval | Plausible range of parameter values | $\bar{x} \pm z_{\alpha/2}\frac{\sigma}{\sqrt{n}}$ |
 | Hypothesis Testing | Statistical decision-making | p-value, t-test, $\chi^2$-test |
+
+
+### Uncategorized
+
+- **Epoch**: One complete pass through the entire training dataset. If the dataset is split into mini-batches, one epoch contains many training steps, one for each batch.
+
+- **Sequence length**: The number of tokens or time steps in one input sequence during training or inference. Longer sequences capture more context, but they increase memory and compute cost, especially in transformer models.
+
+- **Batch size**: The number of samples (or input sequences) processed together in one forward/backward pass before updating the model parameters. Larger batch sizes usually improve hardware utilization, but they also require more memory and can change optimization behavior.
+
+- **Auto-regressive**: A modeling setup where the model predicts the next token using only the previous tokens. During generation, it produces output one token at a time and feeds each new token back in to predict the next one.
