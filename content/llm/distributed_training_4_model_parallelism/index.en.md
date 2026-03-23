@@ -1,0 +1,100 @@
+---
+title: "Distributed Training: Model Parallelism"
+date: 2025-12-17
+tags: ["llm", "distributed-training", "model-parallelism"]
+---
+
+### Why Model Parallelism?
+
+Data parallelism works well when the full model can still fit on each GPU. But once a model becomes too large, simply replicating it across devices is no longer practical.
+
+Model parallelism solves this by partitioning the model itself across multiple GPUs. Instead of every rank storing all weights, each rank stores and computes only part of the model. The tradeoff is that memory usage goes down, but communication and scheduling complexity go up.
+
+In practice, model parallelism usually appears in four forms: **tensor parallelism**, **pipeline parallelism**, **sequence parallelism**, and **expert parallelism**.
+
+### Tensor Parallelism
+
+**Tensor parallelism (TP)** splits the computation inside one layer across multiple GPUs. 
+
+The classic example is a large matrix multiplication in a transformer block in the **Megatron-LM paper** by Nvidia [^1] [^2]. Megatron shards the weight matrix `W` across GPUs in two methods:
+- **Column parallelism**: split the output dimension, so each GPU computes a subset of output columns.
+- **Row parallelism**: split the input dimension, so each GPU computes a partial result and then sums across GPUs.
+
+TP reduces peak GPU memory usage and speeds up computation, but the communication costs between GPUs are significant.
+
+### Pipeline Parallelism
+
+**Pipeline parallelism (PP)** splits the model by layers, partitioning several consecutive layers into one group, called a **stage**. Different stages are then assigned to different devices, so each GPU only computes a portion of the network’s layers.
+
+For example, in a 12-layer transformer:
+
+- GPU 0 may hold layers 1-3
+- GPU 1 may hold layers 4-6
+- GPU 2 may hold layers 7-9
+- GPU 3 may hold layers 10-12
+
+A naive implementation of pipeline parallelism leaves many **pipeline bubble**, i.e. some devices sit idle at the beginning and end of each step while waiting for other stages. Hence, research on pipeline parallelism mainly focuses on:
+1. reducing pipeline bubbles to improve overall system throughput
+2. lowering the memory overhead on each worker so the system can scale to larger models
+
+**GPipe**
+
+The amount of time each GPU spends working is closely tied to the batch size it processes. To reduce this waiting time, GPipe, proposed by Google, presents a simple idea to further split a batch into multiple smaller sub-batches, called **micro-batches** [^3].
+
+{{< figure src="./images/gpipe_figure2_pipeline_parallelism.png" caption="Figure 2 from the GPipe paper: sequential execution, naive model parallelism, and pipeline parallelism with micro-batches." align="center" >}}
+
+**PipeDream**
+
+The PipeDream family was proposed by Microsoft's MSR Fiddle team [^4]. The core idea is to futher reduce pipeline bubbles. If multiple training iterations are in flight at the same time, each node can work on a different iteration at any given moment. This avoids waiting in place on strict step-by-step data dependencies and keeps the devices busy.
+
+{{< figure src="./images/pipedream_model_parallel_4_machines.png" caption="Figure 3: Model parallel training with 4 machines. Numbers indicate minibatch ID. For simplicity, here we assume that forward and backward work in every stage takes one time unit, and communicating activations across machines has no overhead." align="center" >}}
+
+{{< figure src="./images/pipedream_pipeline_4_machines.png" caption="Figure 8: An example pipeline with 4 machines, showing startup and steady states." align="center" >}}
+
+PipeDream partitions the model into pipeline stages by balancing per-stage compute, memory, and communication, so no single stage becomes the throughput bottleneck (划分任务). To address numerical issues from stale weights, it uses techniques like weight stashing and 1F1B scheduling so each microbatch’s forward and backward passes stay more consistent (收敛性问题).
+
+
+### Sequence Parallelism
+
+Two papers both discuss sequence parallelism but with different goals and methods.
+
+**Megatron-LM**
+
+The first paper is Megatron-LM’s third paper, “Reducing Activation Recomputation in Large Transformer Models” [^5]. The motivation behind Megatron-LM’s sequence parallelism was to *distribute the memory that tensor parallelism could not shard anymore*.
+
+{{< figure src="./images/sequence_parallel_figure5.png" caption="Figure 5 from the Megatron-LM paper: Transformer layer with tensor and sequence parallelism. g and g&#772; are conjugate. g is all-gather in the forward pass and reduce-scatter in the backward pass. g&#772; is reduce-scatter in the forward pass and all-gather in the backward pass." align="center" >}}
+
+**ColossalAI**
+
+The other paper is ColossalAI’s “Sequence Parallelism: Long Sequence Training from a System Perspective” [^6]. It mainly addresses limitations from long input sequence length, which scales quadratically with self-attention's memory usage. It splits the input sequence into multiple chunks and feed each chunk to a GPU. It proposes the the Ring Self-Attention (RSA) to compute the attention.
+
+
+### Expert Parallelism
+
+Expert parallelism (EP) is mainly used with **Mixture-of-Experts (MoE)** models. In an MoE layer, a router sends each token to only a small subset of experts rather than activating the full dense feed-forward block [^7]. With EP, different experts are placed on different GPUs.
+
+**GShard**
+
+The GShard paper consists of two parts: one talks about the APIs ("GShard is a module composed of a set of lightweight annotation APIs and an extension to the XLA compiler."); the other discusses MoE. We focus on the second part here. 
+GShard was the first work to extend the MoE idea to Transformers. Specifically, it replaced every other FFN layer in the Transformer encoder and decoder with a position-wise MoE layer, using a Top-2 gating network throughout [^7].
+
+![GShard expert parallelism](images/gshard_expert_parallelism.png)
+
+
+### Comparing the Strategies
+
+| Strategy | Split Dimension | Main Benefit | Main Cost |
+| --- | --- | --- | --- |
+| **Tensor Parallelism** | Within a layer | Fits very wide layers | Frequent collectives inside each block |
+| **Pipeline Parallelism** | Across layers | Fits deep models | Pipeline bubbles and stage balancing |
+| **Sequence Parallelism** | Across sequence length | Lowers activation memory | Extra coordination with TP |
+| **Expert Parallelism** | Across experts | Scales parameter count efficiently | Token routing and `all_to_all` |
+
+
+[^1]: Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism. arXiv, September 17, 2019. <https://arxiv.org/abs/1909.08053>
+[^2]: Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM. arXiv, April 9, 2021. <https://arxiv.org/abs/2104.04473>
+[^3]: GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism. arXiv, November 16, 2018. <https://arxiv.org/abs/1811.06965>
+[^4]: PipeDream: Fast and Efficient Pipeline Parallel DNN Training. arXiv, June 9, 2018. <https://arxiv.org/abs/1806.03377>
+[^5]: Reducing Activation Recomputation in Large Transformer Models. arXiv, May 5, 2022. <https://arxiv.org/abs/2205.05198>
+[^6]: Sequence Parallelism: Long Sequence Training from a System Perspective. arXiv, May 27, 2021. <https://arxiv.org/abs/2105.13120>
+[^7]: GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. arXiv, June 30, 2020. <https://arxiv.org/abs/2006.16668>
