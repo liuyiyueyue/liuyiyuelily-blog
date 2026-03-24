@@ -10,7 +10,7 @@ Data parallelism works well when the full model can still fit on each GPU. But o
 
 Model parallelism solves this by partitioning the model itself across multiple GPUs. Instead of every rank storing all weights, each rank stores and computes only part of the model. The tradeoff is that memory usage goes down, but communication and scheduling complexity go up.
 
-In practice, model parallelism usually appears in four forms: **tensor parallelism**, **pipeline parallelism**, **sequence parallelism**, and **expert parallelism**.
+In practice, model parallelism usually appears in several forms: **tensor parallelism**, **pipeline parallelism**, **sequence parallelism**, **expert parallelism**, and **automatic parallelism**.
 
 ### Tensor Parallelism
 
@@ -81,6 +81,25 @@ GShard was the first work to extend the MoE idea to Transformers. Specifically, 
 ![GShard expert parallelism](images/gshard_expert_parallelism.png)
 
 
+### Automatic Parallelism
+
+(这章写的不太走心。。。)
+
+The goal of automatic parallelism (自动并行) is straightforward: given a model and the available hardware resources, the system should automatically choose a good parallelization strategy for efficient execution.
+
+There are two common modes:
+
+- **Semi-automatic**: users provide limited sharding hints for some tensors or operators, and the framework propagates them through the computation graph. Representative systems include **Mesh-TensorFlow**, **GShard**, and **GSPMD** [^12] [^7] [^8].
+- **Fully automatic**: the framework searches or synthesizes the strategy for all tensors and operators. Representative systems include **FlexFlow**, **Unity**, and **Alpa** [^9] [^10] [^11].
+
+**Mesh-TensorFlow.** Standard SPMD often means data parallelism by splitting the batch dimension. Mesh-TensorFlow generalizes this idea by allowing other tensor dimensions to be partitioned as well. Each operation is lowered into parallel computation plus collective communication, and users describe model dimensions and device layout with a DSL; the system then maps the program onto a TPU mesh automatically [^12].
+
+**GSPMD.** GSPMD uses **tensor sharding annotations** as a unified abstraction for different parallelization strategies. In practice, it keeps the user-facing programming model close to single-device programming, while inferring the partitioning for the remaining operators from a small number of annotations. Its SPMD partitioner can also support pipeline-style partitioning through a lightweight wrapper layer [^8].
+
+**FlexFlow.** FlexFlow defines the **SOAP** search space, covering parallelization across the Sample, Operator, Attribute, and Parameter dimensions. On top of that space, it provides a deep learning framework that searches for an efficient strategy for a given model and machine configuration [^9].
+
+
+
 ### Comparing the Strategies
 
 | Strategy | Split Dimension | Main Benefit | Main Cost |
@@ -98,3 +117,8 @@ GShard was the first work to extend the MoE idea to Transformers. Specifically, 
 [^5]: Reducing Activation Recomputation in Large Transformer Models. arXiv, May 5, 2022. <https://arxiv.org/abs/2205.05198>
 [^6]: Sequence Parallelism: Long Sequence Training from a System Perspective. arXiv, May 27, 2021. <https://arxiv.org/abs/2105.13120>
 [^7]: GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. arXiv, June 30, 2020. <https://arxiv.org/abs/2006.16668>
+[^8]: GSPMD: General and Scalable Parallelization for ML Computation Graphs. arXiv, May 10, 2021. <https://arxiv.org/abs/2105.04663>
+[^9]: Beyond Data and Model Parallelism for Deep Neural Networks. arXiv, July 14, 2018. <https://arxiv.org/abs/1807.05358>
+[^10]: Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization. OSDI 2022. <https://www.usenix.org/conference/osdi22/presentation/unger>
+[^11]: Alpa: Automating Inter- and Intra-Operator Parallelism for Distributed Deep Learning. arXiv, January 28, 2022. <https://arxiv.org/abs/2201.12023>
+[^12]: Mesh-TensorFlow: Deep Learning for Supercomputers. arXiv, November 5, 2018. <https://arxiv.org/abs/1811.02084>
