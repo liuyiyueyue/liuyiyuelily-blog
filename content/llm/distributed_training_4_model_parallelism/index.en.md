@@ -62,7 +62,7 @@ Two papers both discuss sequence parallelism but with different goals and method
 
 The first paper is Megatron-LM’s third paper, “Reducing Activation Recomputation in Large Transformer Models” [^5]. The motivation behind Megatron-LM’s sequence parallelism was to *distribute the memory that tensor parallelism could not shard anymore*.
 
-{{< figure src="./images/sequence_parallel_figure5.png" caption="Figure 5 from the Megatron-LM paper: Transformer layer with tensor and sequence parallelism. g and g&#772; are conjugate. g is all-gather in the forward pass and reduce-scatter in the backward pass. g&#772; is reduce-scatter in the forward pass and all-gather in the backward pass." align="center" >}}
+{{< figure src="./images/sequence_parallel_figure5.png" caption="Figure 5 from the Megatron-LM paper." align="center" >}}
 
 **ColossalAI**
 
