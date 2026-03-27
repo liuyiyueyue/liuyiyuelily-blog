@@ -47,7 +47,6 @@ KV cache size = num_layers × seq_len × num_kv_heads × head_dim × 2 × dtype_
 
 `2` accounts for K and V.
 
-The KV cache grows linearly with sequence length, which is why long-context inference becomes memory-intensive.
-
+For LLaMA-2 13B in FP16, `num_layers = 40`, `num_kv_heads = 40`, `head_dim = 128`, and each FP16 value takes 2 bytes. With a sequence length of 2048 tokens, the KV cache size is `40 * 2048 * 40 * 128 * 2 * 2 = 1.5625 GiB`. If the sequence length increases to 16k tokens, the KV cache grows to `40 * 16,000 * 40 * 128 * 2 * 2 = 12.2 GiB`. In other words, KV cache size scales linearly with sequence length, which is why long-context inference becomes memory-intensive.
 
 [^1]: LLM 推理优化之 KV Cache. SayHelloCode, Zhihu. <https://zhuanlan.zhihu.com/p/673923443>
