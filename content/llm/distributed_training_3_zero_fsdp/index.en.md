@@ -5,8 +5,11 @@ tags: ["llm", "distributed-training", "zero", "fsdp"]
 ---
 
 ### Two Types of Memory
+
 - We refer to the memory used by model parameters as **static memory**, meaning its lifetime is effectively unbounded and it must always occupy HBM. The optimizer states, model parameters, and usually gradients are static memory, since they must persist across training steps rather than being freed immediately after one operator finishes.
 - We refer to activation memory as **dynamic memory**, meaning its lifetime is short and its memory can be reused. Activations have dynamic memory since they are created during forward pass and released or recomputed after backward.
+
+{{< figure src="./images/static_dynamic_memory.jpg" caption="Static memory vs. dynamic memory in training." align="center" >}}
 
 
 ### ZeRo [^1]
