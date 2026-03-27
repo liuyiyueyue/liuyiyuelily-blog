@@ -54,7 +54,6 @@ If there are 32 simultaneous requests, each with a sequence length of 2048 token
 In production, the challenge is not the KV cache of a single short request, but long contexts and many concurrent requests leading to large KV caches and occupying memory.
 
 Common system level approaches to address these issues are:
-
 - **[PagedAttention (vLLM)](/llm/inference_4_vllm_sglang/#paged-attention-vllm)**: split KV cache into fixed-size blocks and maintain a block table that maps logical blocks to physical blocks. This removes the need for large contiguous allocations, sharply reduces fragmentation, and enables prefix sharing via copy-on-write.
 - **[Prefix caching / RadixAttention (SGLang)](/llm/inference_4_vllm_sglang/#vllm-vs-sglang)**: organize KV blocks in a radix tree so requests with the same prefix reuse cached nodes. This is especially effective for multi-turn chat, RAG, and workloads with repeated system prompts.
 - **Chunked prefill**: break long prefills into smaller chunks so prefill does not monopolize the GPU and decode requests can be interleaved, improving utilization and tail latency.

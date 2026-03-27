@@ -1,5 +1,5 @@
 ---
-title: "LLM Inference: vLLM and SGLang"
+title: "LLM Inference: Other Opimization Techniques"
 date: 2026-02-26
 tags: ["llm", "inference", "optimization"]
 ---
@@ -30,7 +30,8 @@ This is analogous to OS virtual memory:
 
 ### Continuous Batching
 
-Continuous batching is a special case of dynamic batching and one of the main reasons vLLM outperforms older serving engines. It can add new requests to an active batch while removing finished ones at the same time. With PagedAttention, each request's KV cache is managed independently, so adding or removing requests does not disrupt the memory layout [^2].
+Traditional static batching has to wait until all requests in a batch finish before processing the next batch, which causes earlier-finished requests to sit idle.
+Continuous batching is a special case of dynamic batching and one of the main reasons vLLM outperforms older serving engines. It can *add new requests to an active batch* while removing finished ones at the same time. With PagedAttention, each request's KV cache is managed independently, so adding or removing requests does not disrupt the memory layout [^2].
 
 {{< figure
     src="images/continuous_batching.png"
