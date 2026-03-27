@@ -51,21 +51,22 @@ If there are 32 simultaneous requests, each with a sequence length of 2048 token
 
 ### Memory Management for KV Cache
 
-In production, the challenge is not the KV cache of a single short request, but long contexts and many concurrent requests. The main problems are:
+In production, the challenge is not the KV cache of a single short request, but long contexts and many concurrent requests leading to large KV caches and occupying memory.
 
-- **Internal fragmentation**: reserving a large contiguous KV region per request wastes HBM when actual sequence lengths differ.
-- **Unknown output length**: generation length is not known in advance, so over-allocation wastes memory while under-allocation risks OOM or expensive reallocation.
-- **Concurrency pressure**: multiple requests retain KV cache at the same time, directly limiting batch size and throughput.
-- **Prefix duplication**: requests with the same system prompt or prompt prefix often store identical KV states repeatedly.
-
-Common memory-management approaches address these issues from different angles:
+Common system level approaches to address these issues are:
 
 - **[PagedAttention (vLLM)](/llm/inference_4_vllm_sglang/#paged-attention-vllm)**: split KV cache into fixed-size blocks and maintain a block table that maps logical blocks to physical blocks. This removes the need for large contiguous allocations, sharply reduces fragmentation, and enables prefix sharing via copy-on-write.
 - **[Prefix caching / RadixAttention (SGLang)](/llm/inference_4_vllm_sglang/#vllm-vs-sglang)**: organize KV blocks in a radix tree so requests with the same prefix reuse cached nodes. This is especially effective for multi-turn chat, RAG, and workloads with repeated system prompts.
 - **Chunked prefill**: break long prefills into smaller chunks so prefill does not monopolize the GPU and decode requests can be interleaved, improving utilization and tail latency.
 - **KV offloading**: move cold KV blocks from GPU HBM to CPU memory or SSD. This increases effective context capacity at the cost of transfer overhead, so it is better suited to less latency-sensitive workloads.
 
-Model architecture also affects KV-cache memory pressure. **MQA** (multi-query attention) reduces cache size by sharing one K/V head across all query heads [^2], while **GQA** (grouped-query attention) shares K/V heads within groups and is a common compromise between quality and memory efficiency [^3]. For very long streams, **sliding-window attention** keeps only a small sink region plus the most recent tokens, making cache growth effectively bounded.
+Model architecture also affects KV-cache memory pressure. 
+- **MQA** (multi-query attention) reduces cache size by sharing one K/V head across all query heads, reducing the KV cache to about 1/n_heads of the original size. [^2]. 
+- **GQA** (grouped-query attention) shares K/V heads within groups and is a common compromise between quality and memory efficiency [^3]. Llama-2-70B uses GQA, where 8 KV heads are shared by 64 query heads, so its KV cache is 8 times smaller than standard MHA. 
+- For very long streams, **sliding-window attention** keeps only a small sink region plus the most recent tokens, making cache growth effectively bounded.
+
+At the numerical level, KV cache can be **quantized**. For example, KV can be reduced from FP16 to INT8 or even INT4, which directly cuts memory usage to one-half or one-quarter. The difficulty is that attention is relatively sensitive to KV precision, so overly aggressive quantization can hurt output quality.
+
 
 [^1]: LLM 推理优化之 KV Cache. SayHelloCode, Zhihu. <https://zhuanlan.zhihu.com/p/673923443>
 [^2]: Noam Shazeer. Fast Transformer Decoding: One Write-Head is All You Need. arXiv, November 6, 2019. <https://arxiv.org/abs/1911.02150>
