@@ -88,11 +88,11 @@ $$
 {{< /rawhtml >}}
 
 Parameters:
-- $Q$ is the query matrix of $n$ * $d_k$, $K$ is the key matrix of $d_k$ * $m$, and $V$ is the value matrix. In self-attention, $m$ = $n$.
-- $d_k$ is the number of column of $Q$ and $K$, representing sequence length.
+- $Q \in \mathbb{R}^{n \times d_k}$ is the query matrix, $K \in \mathbb{R}^{m \times d_k}$ is the key matrix, and $V \in \mathbb{R}^{m \times d_v}$ is the value matrix. In self-attention, $m = n$.
+- $n$ is the number of query tokens, $m$ is the number of key/value tokens, and $d_k$ is the query/key feature dimension.
 
 Breaking down the equation:
-- The term $QK^\top$ is the inner product (cosine) and measures **similarity** between tokens. The shape of $QK^\top$ is $n$ * $m$.
+- The term $QK^\top \in \mathbb{R}^{n \times m}$ is the inner product (cosine) and measures **similarity** between tokens.
 - $\sqrt{d_k}$ rescales the scores for numerical stability.
 - $\frac{QK^\top}{\sqrt{d_k}}$ is called the **attention weight matrix** or **score matrix**.
 - $softmax$ turns the scores into attention weights used to combine the values.
@@ -106,6 +106,84 @@ So we calculated the attetion using two matrix multiplications. This makes paral
 ![Multiply by values](scaled-dot-product-attention-step-3.png)
 
 ![Attention mechanism](attention.png)
+
+
+### Parameter Count
+
+A Transformer model consists of $l$ identical layers. Each layer has two parts: a self-attention block and an MLP block.
+
+**The self-attention block** contains the weight matrices $W_Q$, $W_K$, $W_V$, and $W_O$, together with their biases. The four weight matrices satisfy $W_Q, W_K, W_V, W_O \in \mathbb{R}^{n \times n}$, and the four bias vectors satisfy $b_Q, b_K, b_V, b_O \in \mathbb{R}^{n}$. Therefore, the number of parameters in the self-attention block is 
+
+{{< rawhtml >}}
+$$
+4n^2 + 4n
+$$
+{{< /rawhtml >}}
+
+**The MLP block** consists of two linear layers. In general, the first linear layer maps the hidden dimension from $n$ to $4n$, and the second maps it back from $4n$ to $n$. For the first linear layer, $W_1 \in \mathbb{R}^{n \times 4n}$ and $b_1 \in \mathbb{R}^{4n}$. For the second linear layer, $W_2 \in \mathbb{R}^{4n \times n}$ and $b_2 \in \mathbb{R}^{n}$. So the total number of parameters in the MLP block is 
+
+{{< rawhtml >}}
+$$
+8n^2 + 5n
+$$
+{{< /rawhtml >}}
+
+The self-attention block and the MLP block each have one layer normalization. Each layer normalization has two trainable parameters: the scale parameter $\gamma$ and the shift parameter $\beta$, with $\gamma, \beta \in \mathbb{R}^{n}$. Therefore, the two layer normalizations contribute $4n$ parameters in total.
+
+Hence, the total number of parameters in each Transformer layer is 
+
+{{< rawhtml >}}
+$$
+(4n^2 + 4n) + (8n^2 + 5n) + 4n = 12n^2 + 13n
+$$
+{{< /rawhtml >}}
+
+In addition, **the token embedding matrix** contributes a large number of parameters. Since the embedding dimension is usually equal to the hidden dimension $n$, the embedding matrix $E \in \mathbb{R}^{V \times n}$ has $Vn$ parameters, where $V$ is the vocabulary size.
+
+The final output projection usually shares its weight matrix with the token embedding matrix, so it does not introduce an additional $Vn$ parameters in that case. For positional encoding, trainable positional embeddings introduce some additional parameters, but relatively few. If relative positional encoding is used, such as RoPE or ALiBi, then this part has no trainable parameters. We ignore positional-encoding parameters here.
+
+Therefore, for a Transformer model with $l$ layers, **the total number of trainable parameters** (参数量) is 
+
+{{< rawhtml >}}
+$$
+l(12n^2 + 13n) + Vn
+$$
+{{< /rawhtml >}}
+
+When the hidden dimension $n$ is large, the linear terms can be neglected, so the total parameter count is approximately
+
+{{< rawhtml >}}
+$$
+12ln^2
+$$
+{{< /rawhtml >}}
+
+Using the approximation $P \approx 12ln^2$, we can estimate the parameter counts of several well-known Llama 3 models:
+
+| Model | $l$ | $n$ | $12ln^2$ | Approx. |
+| --- | ---: | ---: | ---: | ---: |
+| 8B | 32 | 4096 | $6{,}442{,}450{,}944$ | $6.44\text{B}$ |
+| 70B | 80 | 8192 | $64{,}424{,}509{,}440$ | $64.42\text{B}$ |
+| 405B | 126 | 16384 | $405{,}874{,}409{,}472$ | $405.87\text{B}$ |
+
+This is only a rough estimate. It is close for 405B, but it underestimates the 8B and 70B models because the formula ignores embeddings, output-layer choices, grouped-query attention details, and exact MLP dimensions.
+
+
+
+
+### FLOPs and Memory
+
+If you want to analyze Transformer performance numerically, the first question is usually "how much compute and memory does one layer need?"
+
+For a general matrix multiplication, two nested loops iterates over rows and columns.
+
+`(M x N) * (N x K) ~= 2MNK` FLOPs
+
+This leads to the standard roofline view:
+
+- large GEMMs such as QKV projection and FFN are usually **compute-bound**
+- decode-time attention is often **memory-bound** because batch size is small and the kernel keeps reading weights and KV cache
+- softmax, layer norm, and other elementwise ops are also often **memory-bound**
 
 
 ## Layer Norm vs. Batch Norm
