@@ -73,6 +73,8 @@ In **masked self-attention**, token `t` is not allowed to see tokens after `t`. 
 
 **Multi-head attention** means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
 
+![Scaled Dot-Product Attention. Multi-Head Attention](scaled_dot-product_attention_and_MHA.png)
+
 ### Scaled Dot-Product Attention
 
 The Transformer paper defines scaled dot-product attention as:
@@ -85,14 +87,23 @@ $$
 $$
 {{< /rawhtml >}}
 
-Here, 
-- $Q$ is the query matrix, $K$ is the key matrix, and $V$ is the value matrix. 
-- The term $QK^\top$ is the inner product (cosine) and measures **similarity** between tokens.
-- $\sqrt{d_k}$ rescales the scores for numerical stability.
-- $\frac{QK^\top}{\sqrt{d_k}}$ is called the **attention weight matrix**.
-- `softmax` turns the scores into attention weights used to combine the values.
+Parameters:
+- $Q$ is the query matrix of $n$ * $d_k$, $K$ is the key matrix of $d_k$ * $m$, and $V$ is the value matrix. In self-attention, $m$ = $n$.
+- $d_k$ is the number of column of $Q$ and $K$, representing sequence length.
 
-So we calculated the attetion using two matrix multiplications. This makes parallel execution easy.
+Breaking down the equation:
+- The term $QK^\top$ is the inner product (cosine) and measures **similarity** between tokens. The shape of $QK^\top$ is $n$ * $m$.
+- $\sqrt{d_k}$ rescales the scores for numerical stability.
+- $\frac{QK^\top}{\sqrt{d_k}}$ is called the **attention weight matrix** or **score matrix**.
+- $softmax$ turns the scores into attention weights used to combine the values.
+
+So we calculated the attetion using two matrix multiplications. This makes parallel execution easy. The images below illustrates these two matrix multiplications [^1]:
+
+![Compute attention scores](scaled-dot-product-attention-step-1.png)
+
+![Apply causal mask](scaled-dot-product-attention-step-2.png)
+
+![Multiply by values](scaled-dot-product-attention-step-3.png)
 
 ![Attention mechanism](attention.png)
 
@@ -124,3 +135,5 @@ Feed-forward network (FFN) provides the model with nonlinear processing capacity
 ## Complete Code
 
 [RethinkFun/DeepLearning `chapter15/transformer.py`](https://github.com/RethinkFun/DeepLearning/blob/master/chapter15/transformer.py)
+
+[^1]: Transformer模型详解（图解最完整版）. 初识CV, Zhihu. <https://zhuanlan.zhihu.com/p/338817680>
