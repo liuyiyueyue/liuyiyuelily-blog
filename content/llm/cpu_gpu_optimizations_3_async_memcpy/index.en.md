@@ -1,57 +1,11 @@
 ---
-title: "[3/4] CPU-GPU Optimization: CUDA Stream and Async Memcpy"
+title: "[3/4] CPU-GPU Optimization: Async Memcpy"
 date: 2026-02-06
 tags: ["llm", "optimization", "cuda", "async"]
 ---
 
 In this blog, we will discuss techniques to squeeze the memcpy "bubbles" with kernel executions. 
-We first discuss CUDA streams which allows operations to run concurrently. 
-Then we discuss asynchronous memcpys to overlap data transfers with kernels.
-
-## CUDA Streams
-
-#### What is a CUDA Stream?
-
-- A CUDA stream is a sequence of GPU commands that execute in order.
-  - Operations in the same stream run sequentially.
-  - Operations in different streams run concurrently, if hardware allows.
-- Think of each stream as a queue of GPU work:
-
-  Stream 0: kernel1 → kernel2 → memcpy → kernel3
-
-  Stream 1: kernelA → kernelB → memcpy
-
-- Default stream (`cudaStreamDefault`) is synchronizing (everything waits for it).
-- Explicit streams (`cudaStreamCreate`) allow true concurrency.
-
-#### Why Use Streams?
-
-- Run independent kernels concurrently
-- Overlap kernel execution
-- Overlap H2D/D2H memcpy with kernels
-- Pipeline mini-batches
-
-#### Sample Usage of Streams
-
-```cuda
-cudaStream_t s1, s2;
-cudaStreamCreate(&s1);
-cudaStreamCreate(&s2);
-
-// Kernels in s1 can run concurrently with kernels in s2.
-myKernel<<<grid, block, 0, s1>>>(...);
-myKernel<<<grid, block, 0, s2>>>(...);
-
-cudaStreamDestroy(s1);
-cudaStreamDestroy(s2);
-```
-
-#### Stream Synchronization
-- Synchronize a stream: `cudaStreamSynchronize(s1);` blocks the CPU until all 
-previously issued GPU executions in `s1` has completed.
-- Synchronize an event: `cudaEventSynchronize(ev);` blocks the CPU until the 
-specified CUDA event `ev` has been recorded.
-- This is how PyTorch, cuBLAS, FlashAttention, etc. build sophisticated pipelines.
+This post focuses on how streams help overlap data movement with compute via `cudaMemcpyAsync`. For a basic introduction to CUDA streams themselves, see the [Stream section](/llm/cuda/#stream) in the CUDA overview.
 
 
 ## Async Memcpy
