@@ -249,7 +249,7 @@ $$
 
 When the hidden size $h$ is large and $h \gg s$, we can ignore the linear terms and approximate the compute in FLOPs as $24bsh^2 l$.
 
-As noted in TODO: sections, a Transformer model with $l$ layers has around $12lh^2$ parameters, and the input contains $bs$ tokens, then:
+As noted in previous sections, a Transformer model with $l$ layers has around $12lh^2$ parameters, and the input contains $bs$ tokens, then:
 
 $$
 \frac{24bsh^2l}{12lh^2 \times bs} = 2 \ \text{FLOPs/token-parameter}
@@ -269,6 +269,22 @@ We can then estimate the total training compute for GPT-3. For GPT-3 175B, each 
 $$
 6 \times (174600 \times 10^{6}) \times (300 \times 10^{9})
 = 3.1428 \times 10^{23}\ \text{FLOPs}
+$$
+
+### Training Time Estimation
+
+The amount of compute required to train a Transformer model is determined by the model parameter count and the total number of training tokens. Once the GPU type is fixed, we can estimate the required training time. For a given amount of compute, training time, that is, the time GPUs need to execute that many FLOPs, depends not only on the GPU type but also on GPU utilization. When estimating end-to-end GPU utilization, we need to account for more than just forward and backward computation. We must also include the time spent on CPU data loading, optimizer updates, multi-GPU communication, and logging. In practice, GPU utilization is often in the range of 0.3 to 0.55.
+
+As discussed above, in one forward pass, each token-parameter pair requires 2 floating-point operations. If activation recomputation is used to reduce activation memory, one additional forward pass is needed. Therefore, the coefficient for forward pass + backward pass + activation recomputation is $1 + 2 + 1 = 4$. In one training iteration with activation recomputation, each token-parameter pair requires:
+
+$$
+2 \times 4 = 8 \ \text{FLOPs/token-parameter}
+$$
+
+Given the number of training tokens and the hardware configuration, the training time of a Transformer model can be estimated as:
+
+$$
+\text{Training time} \approx \frac{8 \times \text{training tokens} \times \text{parameter count}}{\text{number of GPUs} \times \text{peak GPU FLOPs} \times \text{GPU utilization}}
 $$
 
 
