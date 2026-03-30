@@ -187,43 +187,43 @@ CUDA provides both stream- and event-based synchronization. `cudaStreamSynchroni
 
 ### Summary
 
-- The four-layer architecture of CUDA
-    1. Thread execution layer (compute units)
-        - Thread
-            - The most basic execution unit.
-            - One thread executes one kernel.
-            - Has independent registers and local memory
-            - `threadIdx(x, y, z)` indicates this thread's position within the block
-        - Warp
-            - The smallest execution unit
-            - 32 threads form one warp.
-            - lockstep: threads in a warp share one program counter and execute the same instruction
-            - memory coalescing: contiguous accesses are merged into one transaction
-            - optimization principles: multiples of 32 and avoiding branch divergence
-    2. Logical organization layer (software abstraction)
-        - Block
-            - Contains multiple warps, with up to 1024 threads
-            - shared memory: threads inside a block can efficiently access `__shared__` memory
-            - synchronization mechanism: `__syncthreads()` enables synchronization within a block
-            - 1D/2D/3D structure: `blockDim`
-            - independent scheduling: different blocks can execute out of order on different SMs
-        - Grid
-            - Contains multiple blocks
-            - Corresponds to one kernel launch, i.e. `kernel<<<gridDim, blockDim>>>(args)`
-            - 1D/2D/3D structure: `gridDim`
-            - `blockIdx(x, y, z)` indicates this block's position in the grid
-        - `tid = blockIdx.x * blockDim.x + threadIdx.x`
-    3. Concurrency control layer
-        - Stream
-            - Manages execution order and concurrency
-            - asynchronous execution: async
-            - concurrency mechanism: multiple streams can execute kernels and copies in parallel
-            - within the same stream, operations execute in order
-        - Event
-            - Marker points. Used for coordination and timing between streams
-    4. Resource management
-        - Context
-            - A container for GPU resources. Manages all state and data.
+The four-layer architecture of CUDA
+1. Thread execution layer (compute units)
+    - Thread
+        - The most basic execution unit.
+        - One thread executes one kernel.
+        - Has independent registers and local memory
+        - `threadIdx(x, y, z)` indicates this thread's position within the block
+    - Warp
+        - The smallest execution unit
+        - 32 threads form one warp.
+        - lockstep: threads in a warp share one program counter and execute the same instruction
+        - memory coalescing: contiguous accesses are merged into one transaction
+        - optimization principles: multiples of 32 and avoiding branch divergence
+2. Logical organization layer (software abstraction)
+    - Block
+        - Contains multiple warps, with up to 1024 threads
+        - shared memory: threads inside a block can efficiently access `__shared__` memory
+        - synchronization mechanism: `__syncthreads()` enables synchronization within a block
+        - 1D/2D/3D structure: `blockDim`
+        - independent scheduling: different blocks can execute out of order on different SMs
+    - Grid
+        - Contains multiple blocks
+        - Corresponds to one kernel launch, i.e. `kernel<<<gridDim, blockDim>>>(args)`
+        - 1D/2D/3D structure: `gridDim`
+        - `blockIdx(x, y, z)` indicates this block's position in the grid
+    - `tid = blockIdx.x * blockDim.x + threadIdx.x`
+3. Concurrency control layer
+    - Stream
+        - Manages execution order and concurrency
+        - asynchronous execution: async
+        - concurrency mechanism: multiple streams can execute kernels and copies in parallel
+        - within the same stream, operations execute in order
+    - Event
+        - Marker points. Used for coordination and timing between streams
+4. Resource management
+    - Context
+        - A container for GPU resources. Manages all state and data.
 
 
 [^1]: https://developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/
