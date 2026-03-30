@@ -60,21 +60,6 @@ The Transformer Engine automates a key optimization: use higher precision where 
 
 This is exactly aligned with transformer workloads, where matrix multiply dominates runtime and where carefully managed low precision can preserve model quality while significantly increasing throughput.
 
-### SMs, Warps, and the Execution Model
-
-At execution time, the GPU is organized around many **streaming multiprocessors (SMs)**. Each SM contains arithmetic units, Tensor Cores, load/store units, and fast local storage. Threads execute in groups of **32** called **warps**, following the **SIMT** model: one instruction stream applied across many threads in lockstep.
-
-A useful mental model is:
-
-- registers: private to each thread
-- shared memory: local to a thread block on an SM
-- L1 cache: local to an SM
-- L2 cache: shared across the whole GPU
-- HBM: large off-chip device memory
-
-This hierarchy explains a lot of CUDA performance behavior. Good kernels maximize data reuse in registers, shared memory, and caches. Bad kernels repeatedly go out to HBM and waste the GPU's arithmetic throughput waiting on memory.
-
-{{< figure src="./images/figure-2-5.png" caption="GPU hardware hierarchy and the CUDA execution model: SMs execute warps of 32 threads over a layered memory hierarchy." align="center" >}}
 
 ### Summary
 

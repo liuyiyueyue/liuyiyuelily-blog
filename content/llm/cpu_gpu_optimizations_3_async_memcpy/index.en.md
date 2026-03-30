@@ -5,7 +5,7 @@ tags: ["llm", "optimization", "cuda", "async"]
 ---
 
 In this blog, we will discuss techniques to squeeze the memcpy "bubbles" with kernel executions. 
-This post focuses on how streams help overlap data movement with compute via `cudaMemcpyAsync`. For a basic introduction to CUDA streams themselves, see the [Stream section](/llm/cuda/#stream) in the CUDA overview.
+This post focuses on how streams help overlap data movement with compute via `cudaMemcpyAsync`. For a basic introduction to CUDA streams themselves, see the [CUDA Stream section](/llm/cuda/#stream).
 
 
 ## Async Memcpy
