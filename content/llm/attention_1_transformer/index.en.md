@@ -168,22 +168,83 @@ Using the approximation $P \approx 12ln^2$, we can estimate the parameter counts
 
 This is only a rough estimate. It is close for 405B, but it underestimates the 8B and 70B models because the formula ignores embeddings, output-layer choices, grouped-query attention details, and exact MLP dimensions.
 
+### FLOPs
 
+> FLOPs (计算量), or floating-point operations, measure computational cost.
 
+> For $A \in \mathbb{R}^{m \times n}$ and $B \in \mathbb{R}^{n \times p}$, the matrix multiplication $AB$ costs $2mnp$ FLOPs.
 
-### FLOPs and Memory
+In one training iteration, let the input token shape be $[b, s]$, where $b$ is the batch size and $s$ is the sequence length. After embedding, the hidden states are $x \in \mathbb{R}^{b \times s \times h}$, where $h$ is the hidden size. 
 
-If you want to analyze Transformer performance numerically, the first question is usually "how much compute and memory does one layer need?"
+For a **self-attention** block,
 
-For a general matrix multiplication, two nested loops iterates over rows and columns.
+$$
+Q = xW_Q,\quad K = xW_K,\quad V = xW_V
+$$
 
-`(M x N) * (N x K) ~= 2MNK` FLOPs
+$$
+x_{\text{out}} = \operatorname{softmax}\left(\frac{QK^T}{\sqrt{h}}\right)V W_o + x
+$$
 
-This leads to the standard roofline view:
+1. Computing $Q$, $K$, and $V$: $x \in \mathbb{R}^{b \times s \times h}$, $W_Q \in \mathbb{R}^{h \times h}$, $W_K \in \mathbb{R}^{h \times h}$, and $W_V \in \mathbb{R}^{h \times h}$, so $Q \in \mathbb{R}^{b \times s \times h}$, $K \in \mathbb{R}^{b \times s \times h}$, and $V \in \mathbb{R}^{b \times s \times h}$. The FLOPs are:
+   $$
+   3 \cdot 2bsh^2 = 6bsh^2
+   $$
 
-- large GEMMs such as QKV projection and FFN are usually **compute-bound**
-- decode-time attention is often **memory-bound** because batch size is small and the kernel keeps reading weights and KV cache
-- softmax, layer norm, and other elementwise ops are also often **memory-bound**
+2. Computing $QK^T$: $Q \in \mathbb{R}^{b \times n_{\mathrm{head}} \times s \times d_{\mathrm{head}}}$ and $K^T \in \mathbb{R}^{b \times n_{\mathrm{head}} \times d_{\mathrm{head}} \times s}$, so $QK^T \in \mathbb{R}^{b \times n_{\mathrm{head}} \times s \times s}$. So the FLOPs are:
+   $$
+   2bs^2h
+   $$
+
+3. Computing $\text{score} \cdot V$:
+   $\text{score} \in \mathbb{R}^{b \times n_{\mathrm{head}} \times s \times s}$ and $V \in \mathbb{R}^{b \times n_{\mathrm{head}} \times s \times d_{\mathrm{head}}}$, so $\text{score} \cdot V \in \mathbb{R}^{b \times n_{\mathrm{head}} \times s \times d_{\mathrm{head}}}$. So the FLOPs are:
+   $$
+   2bs^2h
+   $$
+
+4. The output projection after attention:
+   $x_{\text{attn}} \in \mathbb{R}^{b \times s \times h}$ and $W_o \in \mathbb{R}^{h \times h}$, so $x_{\text{attn}}W_o \in \mathbb{R}^{b \times s \times h}$. So the FLOPs are:
+   $$
+   2bsh^2
+   $$
+
+For the **MLP** block,
+
+$$
+x = f_{\text{gelu}}(x_{\text{out}}W_1)W_2 + x_{\text{out}}
+$$
+
+1. First linear layer:
+   $x_{\text{out}} \in \mathbb{R}^{b \times s \times h}$ and $W_1 \in \mathbb{R}^{h \times 4h}$, so $x_{\text{out}}W_1 \in \mathbb{R}^{b \times s \times 4h}$. So the FLOPs are:
+   $$
+   8bsh^2
+   $$
+2. Second linear layer:
+   $f_{\text{gelu}}(x_{\text{out}}W_1) \in \mathbb{R}^{b \times s \times 4h}$ and $W_2 \in \mathbb{R}^{4h \times h}$, so $f_{\text{gelu}}(x_{\text{out}}W_1)W_2 \in \mathbb{R}^{b \times s \times h}$. So the FLOPs are:
+   $$
+   8bsh^2
+   $$
+
+Adding them together, the FLOPs needed by **one Transformer layer** are approximately
+
+$$
+24bsh^2 + 4bs^2h
+$$
+
+At the very end of the Transformer architecture, there is the **final linear layer (logits)** that maps hidden states to vocabulary scores.
+Given $h_{\text{out}} \in \mathbb{R}^{b \times s \times h} \quad$ and $W_{\text{vocab}} \in \mathbb{R}^{h \times V}$, we have $h_{\text{out}}W_{\text{vocab}} \in \mathbb{R}^{b \times s \times V}$. So the FLOPs are:
+
+$$
+2bshV
+$$
+
+Therefore, for a Transformer with $l$ layers and input shape $[b, s]$, the FLOPs of **one training iteration** are approximately
+
+$$
+l(24bsh^2 + 4bs^2h) + 2bshV
+$$
+
+## Parameter Count and FLOPs
 
 
 ## Layer Norm vs. Batch Norm
