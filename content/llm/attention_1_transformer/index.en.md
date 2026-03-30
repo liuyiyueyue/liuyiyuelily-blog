@@ -150,7 +150,7 @@ l(12n^2 + 13n) + Vn
 $$
 {{< /rawhtml >}}
 
-When the hidden dimension $n$ is large, the linear terms can be neglected, so the total parameter count is approximately
+When the hidden dimension $n$ is large, the linear terms can be neglected, so the total parameter count is **approximately**
 
 {{< rawhtml >}}
 $$
@@ -244,7 +244,32 @@ $$
 l(24bsh^2 + 4bs^2h) + 2bshV
 $$
 
-## Parameter Count and FLOPs
+
+### Parameter Count and FLOPs
+
+When the hidden size $h$ is large and $h \gg s$, we can ignore the linear terms and approximate the compute in FLOPs as $24bsh^2 l$.
+
+As noted in TODO: sections, a Transformer model with $l$ layers has around $12lh^2$ parameters, and the input contains $bs$ tokens, then:
+
+$$
+\frac{24bsh^2l}{12lh^2 \times bs} = 2 \ \text{FLOPs/token-parameter}
+$$
+
+This means that, in one forward pass, each token-parameter pair requires about 2 floating-point operations: one multiplication and one addition. One can also says that each parameter requires about 2 floating-point operations per token.
+
+One training step includes both a forward pass and a backward pass. The backward pass costs about 2 times the forward pass. 
+Therefore, in one training step, each token-parameter pair requires:
+
+$$
+2 \times (1 + 2) = 6 \ \text{FLOPs/token-parameter}
+$$
+
+We can then estimate the total training compute for GPT-3. For GPT-3 175B, each token-parameter pair uses 6 FLOPs, so the total compute is 6 times the parameter count times the total number of training tokens. GPT-3 has $174600\text{M}$ parameters and is trained on $300\text{B}$ tokens:
+
+$$
+6 \times (174600 \times 10^{6}) \times (300 \times 10^{9})
+= 3.1428 \times 10^{23}\ \text{FLOPs}
+$$
 
 
 ## Layer Norm vs. Batch Norm
