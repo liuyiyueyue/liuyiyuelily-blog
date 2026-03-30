@@ -55,19 +55,20 @@ CUDA organizes computation in a grid → block → warp → thread hierarchy:
 
 **Indexing**
 
-In a typical 1D kernel, each thread computes its **global index** with:
+In a typical 1D kernel, a thread's global index equals `block index * threads per block + thread index` within the block. So in CUDA C, each thread computes its **global index** with:
 
 ```c
 int global_index = blockIdx.x * blockDim.x + threadIdx.x;
 ```
 
-In other words:
+For example, if `blockDim.x = 2`, `blockIdx.x = 256`, and `threadIdx.x = 3`, then the thread's global index is `2 * 256 + 3 = 515` [^2].
 
-```text
-global index = block index * threads per block + thread index within the block
-```
+{{< figure src="./images/even-easier-intro-to-cuda-indexing.png" caption="1D CUDA indexing across blocks and threads." align="center" >}}
 
-For example, if `blockDim.x = 256`, `blockIdx.x = 3`, and `threadIdx.x = 10`, then the thread's global index is `3 * 256 + 10 = 778`.
+For 2D data, CUDA uses `blockIdx.{x,y}` and `threadIdx.{x,y}` to locate a thread within both the grid and its block. The figure below shows how block coordinates and thread coordinates combine to map each thread to a unique 2D position.
+
+{{< figure src="./images/grid-block-thread-indexing.png" caption="Grid, block, and thread indexing in 2D." align="center" >}}
+
 
 **Number of Blocks and Threads Needed**
 
@@ -227,3 +228,4 @@ The four-layer architecture of CUDA
 
 
 [^1]: https://developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/
+[^2]: https://developer.nvidia.com/blog/even-easier-introduction-cuda/
