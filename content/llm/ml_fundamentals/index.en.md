@@ -37,10 +37,11 @@ Machine learning usually starts with a model, a loss function, gradients, and an
 
 ### Training Workflow
 
-Forward -> Backward -> Optimizer: A typical training iteration contains a forward pass to generate *losses* from inputs and labels, a backward pass to compute *gradients* for parameters, and an optimizer step to *update parameters* using those gradients.
+**Forward -> Backward -> Optimizer**: A typical training iteration contains a forward pass to generate **losses** from inputs and labels, a backward pass to compute **gradients** for parameters, and an optimizer step to **update parameters** using those gradients.
 1. Forward pass: 
     - Compute predictions $\hat{y}=f_\theta(x)$
     - Compute loss: compare $\hat{y}$ with the true $y$.
+    - Activations are computed as intermediate results inside the forward pass.
 2. Backward pass: 
     - Compute gradients $\nabla_\theta L$.
     - The backward pass appears only during training, not during inference.
@@ -352,7 +353,7 @@ where:
 
 ### Activation Functions
 
-Activation functions add nonlinearity, which allows neural networks to represent complex patterns.
+Activation functions add nonlinearity, which allows neural networks to represent complex patterns. Activations are computed in the forward pass and stored for use in the backward pass during training. They are intermediate results between input and final output.
 
 | Function | Formula | Range | Typical Use |
 | --- | --- | --- | --- |
