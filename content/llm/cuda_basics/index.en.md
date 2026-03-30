@@ -1,6 +1,6 @@
 ---
 title: "CUDA Basics"
-date: 2025-11-27
+date: 2025-10-25
 tags: ["llm", "cuda"]
 ---
 
@@ -80,14 +80,56 @@ int numBlocks = (N + threadsPerBlock - 1) / threadsPerBlock;
 Choosing `threadsPerBlock` is more hardware-sensitive. In practice, it is usually guided by warp size, the maximum threads per block, the number of SMs, occupancy, and the kernel's memory access pattern. For example, on Blackwell Ultra, the warp size is still 32 threads, the maximum block size is 1024 threads, and the full GPU can contain up to 160 SMs depending on SKU.[^1] In real kernels, developers often start with a multiple of 32 such as 128, 256, or 512 threads per block, then tune from there.
 
 
+### Function Qualifiers
+
+CUDA uses function qualifiers to specify where a function executes and where it can be called from.
+
+| Qualifier | Executes On | Callable From | Return Value | Call Syntax | Common Role |
+| --- | --- | --- | --- | --- | --- |
+| `__host__` | CPU | CPU | Yes | normal `()` | Regular C/C++ host function. This is the default for ordinary functions. |
+| `__device__` | GPU | GPU | Yes | normal `()` | Device-side helper function used inside kernels or other device code |
+| `__global__` | GPU | CPU | No | `<<< >>>` | Kernel entry point launched from the host |
+
+**`__host__` example**
+
+```c
+__host__ void printHello() {
+    printf("Hello from CPU!\n");
+}
+```
+
+**`__global__` example**
+
+```c
+__global__ void vectorAdd(const float *A, const float *B, float *C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        C[i] = A[i] + B[i];
+}
+```
+
+**`__device__` example**
+
+```c
+__device__ float square(float x) {
+    return x * x;
+}
+
+__global__ void computeSquares(float *A, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        A[i] = square(A[i]);
+}
+```
+
+
 ### Launch a Kernel
 
-Launching kernel means grid of threads is launched. All threads execute the same code, aka SPMD. The CUDA kernel syntax is `kernel_name<<<numBlocks, threadsPerBlock>>>(args...);`, where CUDA launches `numBlocks` * `threadsPerBlock` number of threads, and each thread runs one copy of `kernel_name()` in parallel. The below is a kernel for matrix addition:
+Launching kernel means grid of threads is launched. All threads execute the same code, aka SPMD. The CUDA kernel syntax is `kernel_name<<<numBlocks, threadsPerBlock>>>(args...);`, where CUDA launches `numBlocks` * `threadsPerBlock` number of threads, and each thread runs one copy of `kernel_name()` in parallel. 
+
+Below is a code snippet and illustration for vector addition. A complete vector-add example is here: [vec_add_kernel.cu](./code/vec_add_kernel.cu.txt).
 
 ```cpp
-#include <cuda_runtime.h>
-#include <iostream>
-
 // compute vector sum C = A + B
 // each thread performs one pair-wise addition
 __global__ void vecAddKernel(const float* A, const float* B, float* C, int n) {
@@ -98,48 +140,16 @@ __global__ void vecAddKernel(const float* A, const float* B, float* C, int n) {
 }
 
 int main() {
-    int n = 1 << 20;
-    size_t size = n * sizeof(float);
-
-    float *A_h = new float[n];
-    float *B_h = new float[n];
-    float *C_h = new float[n];
-
-    for (int i = 0; i < n; i++) {
-        A_h[i] = 1.0f;
-        B_h[i] = 2.0f;
-    }
-
-    float *A_d, *B_d, *C_d;
-    cudaMalloc((void**)&A_d, size);
-    cudaMalloc((void**)&B_d, size);
-    cudaMalloc((void**)&C_d, size);
-
-    cudaMemcpy(A_d, A_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(B_d, B_h, size, cudaMemcpyHostToDevice);
-
-    int threadsPerBlock = 256;
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+    ...
     vecAddKernel<<<numBlocks, threadsPerBlock>>>(A_d, B_d, C_d, n);
-
-    cudaMemcpy(C_h, C_d, size, cudaMemcpyDeviceToHost);
-
-    std::cout << "C[0] = " << C_h[0] << std::endl;
-
-    cudaFree(A_d);
-    cudaFree(B_d);
-    cudaFree(C_d);
-    delete[] A_h;
-    delete[] B_h;
-    delete[] C_h;
-
-    return 0;
+    ...
 }
 ```
 
 {{< figure src="./images/vec_add_kernel.png" caption="Threading in vecAddKernel() kernel." align="center" >}}
 
-### Stream
+
+### CUDA Stream
 
 **What is a CUDA Stream?**
 
