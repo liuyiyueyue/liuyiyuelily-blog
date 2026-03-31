@@ -9,7 +9,7 @@ math: true
 
 **Transformer** is a neural network architecture designed to process sequences. It was introduced as an alternative to RNN-based models, with the core idea that a model should not pass information only step by step through time. Instead, it should be able to directly look at the whole sequence and decide which parts matter most.
 
-The key mechanism is **attention**, which aggregates information from a sequence by assigning different weights to different tokens. Because of this, a Transformer can model long-range dependencies more effectively than traditional recurrent models.
+The key mechanism is **attention**, which aggregates information from a sequence by assigning different weights to different tokens. Because of this, a Transformer can model long-range dependencies more effectively than traditional recurrent models.[^1]
 
 A standard Transformer contains an **encoder** and a **decoder**.
 
@@ -17,6 +17,8 @@ A standard Transformer contains an **encoder** and a **decoder**.
 - The **decoder** is built from masked multi-head self-attention, encoder-decoder attention, feed-forward layers, residual connections, and layer normalization.
 
 Besides the encoder and decoder, the Transformer also includes embedding layers, positional encodings, and an output projection followed by a softmax layer.
+
+Below is the architecture of the standard Transformer [^2]:
 
 ![Transformer architecture](images/transformer.png)
 
@@ -69,7 +71,7 @@ So self-attention means that each token compares itself with all tokens in the s
 
 In masked self-attention, token `t` is not allowed to see tokens after `t`. This is required in autoregressive language models, where prediction at position `t` must not use future tokens.
 
-**Multi-Head Attention**
+**Multi-Head Attention (MHA)**
 
 Multi-head attention means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
 
@@ -97,13 +99,13 @@ Breaking down the equation:
 - $\frac{QK^\top}{\sqrt{d_k}}$ is called the **attention weight matrix** or **score matrix**.
 - $softmax$ turns the scores into attention weights used to combine the values.
 
-So we calculated the attetion using two matrix multiplications. This makes parallel execution easy. The images below illustrates these two matrix multiplications [^1]:
+So we calculated the attetion using two matrix multiplications. This makes parallel execution easy. The images below illustrates these two matrix multiplications [^3]:
 
-![Compute attention scores](images/scaled-dot-product-attention-step-1.png)
+{{< figure src="images/scaled-dot-product-attention-step-1.png" alt="Compute attention scores" width="420" align="center" >}}
 
-![Apply causal mask](images/scaled-dot-product-attention-step-2.png)
+{{< figure src="images/scaled-dot-product-attention-step-2.png" alt="Apply causal mask" width="420" align="center" >}}
 
-![Multiply by values](images/scaled-dot-product-attention-step-3.png)
+{{< figure src="images/scaled-dot-product-attention-step-3.png" alt="Multiply by values" width="420" align="center" >}}
 
 ![Attention mechanism](images/attention.png)
 
@@ -146,4 +148,6 @@ $$
 
 [RethinkFun/DeepLearning `chapter15/transformer.py`](https://github.com/RethinkFun/DeepLearning/blob/master/chapter15/transformer.py)
 
-[^1]: Transformer模型详解（图解最完整版）. 初识CV, Zhihu. <https://zhuanlan.zhihu.com/p/338817680>
+[^1]: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention Is All You Need. arXiv, June 12, 2017. <https://arxiv.org/abs/1706.03762>
+[^2]: Yi Tay, Mostafa Dehghani, Dara Bahri, and Donald Metzler. Efficient Transformers: A Survey. arXiv, September 14, 2020. <https://arxiv.org/abs/2009.06732>
+[^3]: Transformer模型详解（图解最完整版）. 初识CV, Zhihu. <https://zhuanlan.zhihu.com/p/338817680>
