@@ -128,9 +128,19 @@ This is why Transformers typically use **layer normalization instead of batch no
 Positional encoding provides the model with information about the positions of words in a sequence. Since the Transformer's self-attention mechanism does not naturally account for the order of elements in the sequence, positional encoding solves this by adding position information to each element's representation. In the original Transformer paper, positional encodings are defined using alternating sine and cosine functions.
 
 
-### FFN
+### MLP
 
-Feed-forward network (FFN) provides the model with nonlinear processing capacity. It operates independently on each position of the input, helping increase the model's complexity and expressive power.
+In a Transformer block, attention and the **feed-forward network** (**FFN**, also called the **MLP** block) play different roles.
+
+{{< figure src="images/ffn.png" alt="Attention and FFN" width="420" align="center" >}}
+
+The FFN block typically consists of two linear layers with a nonlinear activation in between:
+
+$$
+x = f_{\text{gelu}}(x_{\text{out}}W_1)W_2 + x_{\text{out}}
+$$
+
+只用MLP为啥不行呢？MLP 通过全连接层实现全局特征之间的交互，但其计算开销过高，因此难以无限制地向更深层堆叠。Transformer 则通过 attention 机制实现全局特征之间的选择性交互，在保留全局信息建模能力的同时，提供了更高效的结构化建模方式。
 
 ### Complete Code
 
