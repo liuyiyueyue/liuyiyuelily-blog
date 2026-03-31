@@ -1,5 +1,5 @@
 ---
-title: "Transformer"
+title: "Transformer: Basics"
 date: 2023-07-12
 tags: ["llm", "transformer"]
 math: true
@@ -18,7 +18,7 @@ A standard Transformer contains an **encoder** and a **decoder**.
 
 Besides the encoder and decoder, the Transformer also includes embedding layers, positional encodings, and an output projection followed by a softmax layer.
 
-![Transformer architecture](transformer.png)
+![Transformer architecture](images/transformer.png)
 
 In practice, modern large language models often use decoder-only variants, but the original encoder-decoder design is still the standard starting point for understanding the architecture.
 
@@ -73,7 +73,7 @@ In **masked self-attention**, token `t` is not allowed to see tokens after `t`. 
 
 **Multi-head attention** means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
 
-![Scaled Dot-Product Attention. Multi-Head Attention](scaled_dot-product_attention_and_MHA.png)
+![Scaled Dot-Product Attention. Multi-Head Attention](images/scaled_dot-product_attention_and_MHA.png)
 
 ### Scaled Dot-Product Attention
 
@@ -99,13 +99,13 @@ Breaking down the equation:
 
 So we calculated the attetion using two matrix multiplications. This makes parallel execution easy. The images below illustrates these two matrix multiplications [^1]:
 
-![Compute attention scores](scaled-dot-product-attention-step-1.png)
+![Compute attention scores](images/scaled-dot-product-attention-step-1.png)
 
-![Apply causal mask](scaled-dot-product-attention-step-2.png)
+![Apply causal mask](images/scaled-dot-product-attention-step-2.png)
 
-![Multiply by values](scaled-dot-product-attention-step-3.png)
+![Multiply by values](images/scaled-dot-product-attention-step-3.png)
 
-![Attention mechanism](attention.png)
+![Attention mechanism](images/attention.png)
 
 
 ## Layer Norm vs. Batch Norm
