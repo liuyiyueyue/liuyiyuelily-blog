@@ -5,7 +5,7 @@ tags: ["llm", "transformer"]
 math: true
 ---
 
-## Overview
+### Overview
 
 **Transformer** is a neural network architecture designed to process sequences. It was introduced as an alternative to RNN-based models, with the core idea that a model should not pass information only step by step through time. Instead, it should be able to directly look at the whole sequence and decide which parts matter most.
 
@@ -22,7 +22,7 @@ Besides the encoder and decoder, the Transformer also includes embedding layers,
 
 In practice, modern large language models often use decoder-only variants, but the original encoder-decoder design is still the standard starting point for understanding the architecture.
 
-## Transformer vs. RNN
+### Transformer vs. RNN
 
 Transformer and RNN both aim to model sequence data, and both use nonlinear layers such as MLPs to transform representations into richer semantic spaces. The main difference is **how they pass sequence information** (如何传递序列信息).
 
@@ -46,7 +46,7 @@ In summary, the difference is not that one understands sequences and the other d
 - **Transformer**: aggregates information globally through attention
 
 
-## Attention and Its Math
+### Attention and Its Math
 
 Attention measures how much one token should focus on another token. It can be understood as a weighted aggregation of sequence information, regardless of distance in the sequence.
 
@@ -55,9 +55,9 @@ At a high level:
 - `weight = similarity(query, key)`
 - `output = weighted sum of values`
 
-### Self-Attention
+**Self-Attention**
 
-In **self-attention**, `Q`, `K`, and `V` all come from the same input sequence:
+In self-attention, `Q`, `K`, and `V` all come from the same input sequence:
 
 - **Query (Q)**: what the current token is looking for
 - **Key (K)**: what each token offers for matching
@@ -65,17 +65,17 @@ In **self-attention**, `Q`, `K`, and `V` all come from the same input sequence:
 
 So self-attention means that each token compares itself with all tokens in the same sequence and then gathers the most relevant information.
 
-### Masked Attention
+**Masked Attention**
 
-In **masked self-attention**, token `t` is not allowed to see tokens after `t`. This is required in autoregressive language models, where prediction at position `t` must not use future tokens.
+In masked self-attention, token `t` is not allowed to see tokens after `t`. This is required in autoregressive language models, where prediction at position `t` must not use future tokens.
 
-### Multi-Head Attention
+**Multi-Head Attention**
 
-**Multi-head attention** means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
+Multi-head attention means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
 
 ![Scaled Dot-Product Attention. Multi-Head Attention](images/scaled_dot-product_attention_and_MHA.png)
 
-### Scaled Dot-Product Attention
+**Scaled Dot-Product Attention**
 
 The Transformer paper defines scaled dot-product attention as:
 
@@ -108,7 +108,7 @@ So we calculated the attetion using two matrix multiplications. This makes paral
 ![Attention mechanism](images/attention.png)
 
 
-## Layer Norm vs. Batch Norm
+### Layer Norm vs. Batch Norm
 
 Both layer normalization and batch normalization are used to stabilize training, but they normalize over different dimensions.
 
@@ -123,16 +123,16 @@ Both layer normalization and batch normalization are used to stabilize training,
 This is why Transformers typically use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
 
 
-## Positional Encoding
+### Positional Encoding
 
 Positional encoding provides the model with information about the positions of words in a sequence. Since the Transformer's self-attention mechanism does not naturally account for the order of elements in the sequence, positional encoding solves this by adding position information to each element's representation. In the original Transformer paper, positional encodings are defined using alternating sine and cosine functions.
 
 
-## FFN
+### FFN
 
 Feed-forward network (FFN) provides the model with nonlinear processing capacity. It operates independently on each position of the input, helping increase the model's complexity and expressive power.
 
-## Complete Code
+### Complete Code
 
 [RethinkFun/DeepLearning `chapter15/transformer.py`](https://github.com/RethinkFun/DeepLearning/blob/master/chapter15/transformer.py)
 
