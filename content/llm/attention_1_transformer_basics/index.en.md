@@ -110,19 +110,35 @@ So we calculated the attetion using two matrix multiplications. This makes paral
 ![Attention mechanism](images/attention.png)
 
 
-### Layer Norm vs. Batch Norm
+### Batch Norm, Layer Norm, and RMS Norm 
+
+**From Batch Norm to Layer Norm**
 
 Both layer normalization and batch normalization are used to stabilize training, but they normalize over different dimensions.
 
-**Batch normalization** computes statistics across the batch. Its behavior depends on the distribution of examples inside the mini-batch. This works well in many vision settings, but it is less suitable for sequence models when:
+**Batch normalization** computes statistics across the batch. Its behavior depends on the distribution of examples inside the mini-batch. This works well in many vision settings, but it is less suitable for sequence models when sequence lengths vary a lot, token distributions change across positions, or batch statistics become unstable or less meaningful.
 
-- sequence lengths vary a lot
-- token distributions change across positions
-- batch statistics become unstable or less meaningful
+**Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.[^4]
 
-**Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.
+This is why Transformers use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
 
-This is why Transformers typically use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
+**From Layer Norm to RMS Norm**
+
+Many modern language models replace LayerNorm with **RMSNorm**. RMSNorm is a simplified variant that normalizes by the **root mean square** of the activations and does not subtract the mean. This reduces computation while usually preserving similar model quality. In practice, RMSNorm is often preferred because it can effectively mitigate the vanishing-gradient problem in deep networks while maintaining fast training convergence.
+
+The corresponding formulas are:
+
+$$
+\hat{x}_{\mathrm{LayerNorm}} = \frac{x - \mu}{\sigma + \epsilon}
+$$
+
+{{< rawhtml >}}
+$$
+\hat{x}_{\mathrm{RMSNorm}} = \frac{x}{\operatorname{RMS}(x) + \epsilon},
+\quad \text{where} \quad
+\operatorname{RMS}(x) = \sqrt{\frac{1}{N}\sum_{i=1}^{N} x_i^2}
+$$
+{{< /rawhtml >}}
 
 
 ### Positional Encoding
@@ -151,3 +167,4 @@ $$
 [^1]: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention Is All You Need. arXiv, June 12, 2017. <https://arxiv.org/abs/1706.03762>
 [^2]: Yi Tay, Mostafa Dehghani, Dara Bahri, and Donald Metzler. Efficient Transformers: A Survey. arXiv, September 14, 2020. <https://arxiv.org/abs/2009.06732>
 [^3]: Transformer模型详解（图解最完整版）. 初识CV, Zhihu. <https://zhuanlan.zhihu.com/p/338817680>
+[^4]: Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton. Layer Normalization. arXiv, July 21, 2016. <https://arxiv.org/abs/1607.06450>
