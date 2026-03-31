@@ -185,10 +185,74 @@ $$
 \text{Training time} \approx \frac{8 \times \text{training tokens} \times \text{parameter count}}{\text{number of GPUs} \times \text{peak GPU FLOPs} \times \text{GPU utilization}}
 $$
 
-## Intermediate Activations
+### Activations
 
-Besides model parameters, gradients, and optimizer states, one of the largest contributors to GPU memory usage is the intermediate activations produced during the forward pass. These activations must be saved so they can be reused during backpropagation when computing gradients.
+Besides model parameters, gradients, and optimizer states, one of the largest contributors to GPU memory usage is the intermediate activations produced during the forward pass. These activations must be saved so they can be reused during backpropagation when computing gradients. Here, **activations** refer to all tensors that are computed during the forward pass and are needed again during the backward pass. This does not include model parameters or optimizer states, but it does include tensors such as the mask matrices required by dropout.
 
-Here, **activations** refer to all tensors that are computed during the forward pass and are needed again during the backward pass. This does not include model parameters or optimizer states, but it does include tensors such as the mask matrices required by dropout.
+Throughout this section, activations are assumed to be stored in `fp16` or `bf16`, so each element takes 2 bytes. The only exception is the dropout mask, where each element takes 1 byte. Below, we give both the number of elements and the corresponding activation memory usage in bytes.
 
-(not finished...)
+Let $a$ denote the number of attention heads, and let $d_{\mathrm{head}} = h / a$.
+
+For a **self-attention** block,
+
+1. For the projections $Q$, $K$, and $V$, the common input $x$ must be saved as an activation. Here
+   $x \in \mathbb{R}^{b \times s \times h}$, so it has $bsh$ elements and uses $2bsh$ bytes.
+
+2. For the matrix multiplication $QK^T$, the activations $Q$ and $K$ must be saved. Both satisfy
+   $Q, K \in \mathbb{R}^{b \times s \times h}$, so together they have $2bsh$ elements and use $4bsh$ bytes.
+
+3. For the softmax operation, its input must be saved. Then
+   $Q \in \mathbb{R}^{b \times a \times s \times d_{\mathrm{head}}}$,
+   $K^T \in \mathbb{R}^{b \times a \times d_{\mathrm{head}} \times s}$, and
+   $QK^T \in \mathbb{R}^{b \times a \times s \times s}$, so the saved softmax input has $b a s^2$ elements and uses $2b a s^2$ bytes.
+
+4. After softmax, dropout is applied. The dropout mask has the same shape as the attention score matrix:
+   $M_{\mathrm{drop}} \in \mathbb{R}^{b \times a \times s \times s}$, so it has $b a s^2$ elements and uses $b a s^2$ bytes.
+
+5. For the attention output
+   $$
+   \operatorname{softmax}\left(\frac{QK^T}{\sqrt{d_{\mathrm{head}}}}\right)V,
+   $$
+   both the attention matrix and $V$ must be saved. Their shapes are
+   $\operatorname{softmax}\left(\frac{QK^T}{\sqrt{d_{\mathrm{head}}}}\right) \in \mathbb{R}^{b \times a \times s \times s}$ and
+   $V \in \mathbb{R}^{b \times a \times s \times d_{\mathrm{head}}}$, so together they have $b a s^2 + bsh$ elements and use $2b a s^2 + 2bsh$ bytes.
+
+6. For the output projection and the final dropout, the projection input and the dropout mask must be saved. The projection input satisfies
+   $x_{\mathrm{attn}} \in \mathbb{R}^{b \times s \times h}$, which contributes $bsh$ elements and $2bsh$ bytes, and the dropout mask contributes another $bsh$ elements and $bsh$ bytes.
+
+Adding these terms together, the intermediate activation memory of the self-attention block is approximately
+
+$$
+11bsh + 5b a s^2
+$$
+
+For a **MLP** block:
+
+1. The input to the first linear layer must be saved. Since $x \in \mathbb{R}^{b \times s \times h}$, this uses $2bsh$.
+   That is, it has $bsh$ elements and uses $2bsh$ bytes.
+
+2. The input to the activation function must be saved. Since $xW_1 \in \mathbb{R}^{b \times s \times 4h}$, this has $4bsh$ elements and uses $8bsh$ bytes.
+
+3. The input to the second linear layer must be saved. Since $f(xW_1) \in \mathbb{R}^{b \times s \times 4h}$, this has $4bsh$ elements and uses $8bsh$ bytes.
+
+4. The final dropout mask has the same shape as the MLP output, so it has $bsh$ elements and uses $bsh$ bytes.
+
+Therefore, the MLP block saves about $10bsh$ elements, corresponding to activation memory
+
+$$
+19bsh
+$$
+
+In addition, the self-attention block and the MLP block each have a layer normalization. Each layer normalization must save its input, where $x \in \mathbb{R}^{b \times s \times h}$, so each contributes $bsh$ elements and uses $2bsh$ bytes. Together, the two layer normalizations contribute $2bsh$ elements and use $4bsh$ bytes.
+
+In total, one Transformer layer saves about $18bsh + 3b a s^2$ elements, corresponding to activation memory
+
+$$
+34bsh + 5b a s^2
+$$
+
+Therefore, **for an $l$-layer Transformer model, the intermediate activation memory can be approximated as**
+
+$$
+l(34bsh + 5b a s^2)
+$$
