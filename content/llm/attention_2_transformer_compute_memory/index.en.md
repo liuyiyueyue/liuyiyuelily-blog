@@ -1,5 +1,5 @@
 ---
-title: "Transformer: Parameter Count, FLOPs, and Training Time"
+title: "Transformer: Parameter Count, FLOPs, Memory Usage, and Training Time"
 date: 2023-07-13
 tags: ["llm", "transformer"]
 math: true
@@ -256,3 +256,35 @@ Therefore, **for an $l$-layer Transformer model, the intermediate activation mem
 $$
 l(34bsh + 5b a s^2)
 $$
+
+### Memory Usage
+
+In one training iteration, the GPU memory occupied by model parameters (or gradients) depends only on the number of model parameters and the parameter data type. It does **not** depend on the input size. The same is true for optimizer states: their memory usage depends on the optimizer type and the parameter count, but not on the input batch. Intermediate activations are different. Their memory usage grows with the input size, especially with batch size $b$ and sequence length $s$. As $b$ and $s$ increase, activation memory increases accordingly. This is why, when training runs into OOM issues, reducing the batch size often helps: it reduces activation memory, not the memory occupied by parameters, gradients, or optimizer states.
+
+Take GPT-3 175B as a concrete example. Its model configuration is:
+
+| Model | Parameters | Layers $l$ | Hidden size $h$ | Attention heads $a$ |
+| --- | ---: | ---: | ---: | ---: |
+| GPT-3 | 175B | 96 | 12288 | 96 |
+
+Assume mixed-precision training, with both model parameters and activations stored in `fp16`, so each element takes 2 bytes.
+
+GPT-3 has 175B parameters, so the parameter memory is approximately:
+
+$$
+175 \times 10^9 \times 2 \text{ bytes} = 350 \text{ GB}
+$$
+
+Now let the sequence length be $s = 2048$. Using the activation-memory estimate derived above,
+
+$$
+l(34bsh + 5b a s^2),
+$$
+
+we can compare the activation memory at different batch sizes:
+
+- When $b = 1$, the activation memory is about $275 \text{ GB}$, which is about $0.79\times$ the parameter memory.
+- When $b = 64$, the activation memory is about $17.6 \text{ TB}$, which is about $50\times$ the parameter memory.
+- When $b = 128$, the activation memory is about $35.3 \text{ TB}$, which is about $101\times$ the parameter memory.
+
+**As batch size increases, activation memory quickly grows far beyond parameter memory.** In practice, activation recomputation is commonly used to reduce this cost. In exchange for one extra forward-pass worth of compute, it reduces the amount of activation memory that must be stored. This is fundamentally a time-for-space tradeoff.
