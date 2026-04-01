@@ -65,7 +65,15 @@ For example, if `blockDim.x = 2`, `blockIdx.x = 256`, and `threadIdx.x = 3`, the
 
 {{< figure src="./images/even-easier-intro-to-cuda-indexing.png" caption="1D CUDA indexing across blocks and threads." align="center" >}}
 
-For 2D data, CUDA uses `blockIdx.{x,y}` and `threadIdx.{x,y}` to locate a thread within both the grid and its block. The figure below shows how block coordinates and thread coordinates combine to map each thread to a unique 2D position.
+For 2D data, CUDA uses `blockIdx.{x,y}` and `threadIdx.{x,y}` to locate a thread within both the grid and its block. In practice, kernels often compute both the 2D coordinates and a flattened integer index:
+
+```c
+int global_x = blockIdx.x * blockDim.x + threadIdx.x;
+int global_y = blockIdx.y * blockDim.y + threadIdx.y;
+int global_index = global_y * (gridDim.x * blockDim.x) + global_x;
+```
+
+Here, `gridDim.x * blockDim.x` is the total width of the full 2D launch. The figure below shows how block coordinates and thread coordinates combine to map each thread to a unique 2D position.
 
 {{< figure src="./images/grid-block-thread-indexing.png" caption="Grid, block, and thread indexing in 2D." align="center" >}}
 
