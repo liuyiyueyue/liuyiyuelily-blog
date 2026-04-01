@@ -143,6 +143,12 @@ $$
 l(24bsh^2 + 4bs^2h) + 2bshV
 $$
 
+Most people write it concisely **using big-O** below, ignoring the $b$ and $l$ constants. Again, $s$ is sequence length, and $h$ is hidden size.
+
+$$
+O(sh^2 + s^2h) \text{ or } O(s^2h)
+$$
+
 ### Parameter Count and FLOPs
 
 When the hidden size $h$ is large and $h \gg s$, we can ignore the linear terms and approximate the compute in FLOPs as $24bsh^2 l$.
