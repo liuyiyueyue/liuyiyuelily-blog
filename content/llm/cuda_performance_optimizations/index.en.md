@@ -6,11 +6,13 @@ math: true
 ---
 
 
-### Let's Start with Array Sum (Reduce)
+### Let's Start with Array Sum via Reduction [^1]
 
 **Algorithm Overview**
 
 Assume we are given an array of length `N` and need to compute the sum of it. We first split the array into `m` chunks. In the first stage, we launch `m` blocks, with each block reducing one chunk to a partial sum. In the second stage, a single block reduces those `m` partial sums to produce the final result. Since the second stage can reuse the same kernel as the first, we will not discuss it separately here. This section focuses only on optimization techniques for the first stage.
+
+{{< figure src="./images/reduction.png" align="center" >}}
 
 The kernel interface is:
 
@@ -40,14 +42,14 @@ __global__ void reduce0(float *d_in,float *d_out){
     unsigned int i=blockIdx.x*blockDim.x+threadIdx.x;
     unsigned int tid=threadIdx.x;
     sdata[tid]=d_in[i];
-    __syncthreads();
+    __syncthreads(); // shared-memory load must be complete before reduction starts.
 
     // do reduction in shared mem
-    for(unsigned int s=1; s<blockDim.x; s*=2){
+    for(unsigned int s=1; s<blockDim.x; s*=2){ // for each reduction step
         if(tid%(2*s) == 0){
             sdata[tid]+=sdata[tid+s];
         }
-        __syncthreads();
+        __syncthreads(); // each reduction step must be complete before the next step starts.
     }
     
     // write result for this block to global mem
@@ -202,7 +204,6 @@ __global__ void reduce4(float *d_in,float *d_out){
 
 **Loop Unrolling**
 
-
 At this point, the reduction is already highly efficient. Further optimization becomes quite difficult. To push performance to the limit, we can fully unrolling the for loop. There is still some benefit, but it is no longer especially significant. This is mainly due to the continued evolution of GPU hardware architectures, along with substantial improvements NVIDIA has made in the compiler. The pseudocode is as follows:
 
 ```c
@@ -289,6 +290,24 @@ __global__ void reduce7(const float *d_in, float *d_out, unsigned int n) {
 
 ### Matrix Multiplication!
 
+大迭代 和 小迭代：
+- 对于这个block而言，它需要进行2048/8=256次迭代，我们先把这个迭代称为大迭代。每一次大迭代都需要把A里面128×8=1024个元素和B里面8×128=1024个元素先放到shared memory中。
+- 在进行一个大迭代时，shared memory中有128×8=1024个A矩阵元素和8×128=1024个B矩阵元素。随后，每个线程需要进行8次迭代，我们把这个迭代成为小迭代。
+
+
+double buffering: 
+- 为了实现数据预取，需要开启两倍的shared memory和寄存器。
+- 很多地方把这个技术叫做双缓冲，我感觉跟预取是同一个事情。
+- 为了后续方便介绍，我们用read SM和write SM代表用来读写的两块共享内存，并用read REG和write REG来表示用来读写的两块寄存器。
+
+
+for k in 256 big_loop:
+	prefetch next loop data to write_SM
+	// compute in read_SM
+	for iter in 8 small_loop:
+		prefecth next loop data to write_REG
+		compute in read_REG
+
 
 ### cuBLAS, cuDNN, and CUTLASS
 Start with plain CUDA and **cuBLAS**. If you care about deep learning, learn **cuDNN** next. Leave **CUTLASS** for later, when you want to study lower-level kernel design.
@@ -349,4 +368,5 @@ cublasSgemm(handle,
 A complete example is here: [simple_mat_mul.cu](./code/simple_mat_mul.cu.txt).
 
 
-- Most of the Reduce kernel CUDA code is from Mark Mharris's slides on CUDA performance!
+
+[^1]: Mark Harris. Optimizing Parallel Reduction in CUDA. NVIDIA. <https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf>
