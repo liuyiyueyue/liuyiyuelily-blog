@@ -288,25 +288,92 @@ __global__ void reduce7(const float *d_in, float *d_out, unsigned int n) {
 }
 ```
 
-### Matrix Multiplication!
+### Next, Matrix-vector Multiplication (GEMV)
 
-大迭代 和 小迭代：
-- 对于这个block而言，它需要进行2048/8=256次迭代，我们先把这个迭代称为大迭代。每一次大迭代都需要把A里面128×8=1024个元素和B里面8×128=1024个元素先放到shared memory中。
-- 在进行一个大迭代时，shared memory中有128×8=1024个A矩阵元素和8×128=1024个B矩阵元素。随后，每个线程需要进行8次迭代，我们把这个迭代成为小迭代。
+Matrix-vector multiplication is a foundational operation in linear algebra. Let matrix $A \in \mathbb{R}^{M \times N}$, vector $x \in \mathbb{R}^{N}$, and vector $y \in \mathbb{R}^{M}$. Then
 
+$$
+y = Ax
+$$
 
-double buffering: 
-- 为了实现数据预取，需要开启两倍的shared memory和寄存器。
-- 很多地方把这个技术叫做双缓冲，我感觉跟预取是同一个事情。
-- 为了后续方便介绍，我们用read SM和write SM代表用来读写的两块共享内存，并用read REG和write REG来表示用来读写的两块寄存器。
+**Naive Kernel**
 
+In the naive kernel implementation below, each thread handles a row of matrix $A$, an element of vector $x$, and an element of vector $y$. This kernel is simple and performs coalesced access on A (row-major). However, the vector $x$ is reloaded N times per thread, wasting memory bandwidth. 
 
-for k in 256 big_loop:
-	prefetch next loop data to write_SM
-	// compute in read_SM
-	for iter in 8 small_loop:
-		prefecth next loop data to write_REG
-		compute in read_REG
+```c
+__global__ void matvec1(float* A, float* x, float* y,
+                       int M, int N) {
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < M) {
+        float sum = 0;
+        for (int col = 0; col < N; col++)
+            sum += A[row*N + col] * x[col];
+        y[row] = sum;
+    }
+}
+```
+
+**Reuse Vector $x$**
+
+Intead of reloading vector $x$ multiple times, we use the shared memory to store a tile of it. Each thread loads an element of `x` into the shared tile `sx`
+
+```text
+x:  [ x0 x1 x2 x3 | x4 x5 x6 x7 | ... ]
+        ↑ TILE 0        ↑ TILE 1
+```
+
+There is the code for the optimized kernel:
+
+```c
+#define TILE 256
+// number of elements of x loaded into shared memory per iteration
+
+__global__ void matvec_opt(float* A, float* x, float* y,
+                           int M, int N) {
+
+    // shared memory buffer to cache a tile of vector x
+    __shared__ float sx[TILE];
+
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float sum = 0;
+
+    // loop over x (and columns of A) in tiles
+    for (int t = 0; t < (N + TILE - 1)/TILE; t++) {
+
+        // compute global index into x for this tile
+        int idx = t*TILE + threadIdx.x;
+
+        // load one element of x into shared memory if within bounds
+        if (idx < N)
+            sx[threadIdx.x] = x[idx];
+
+        // ensure all threads have finished loading shared memory
+        __syncthreads();
+
+        if (row < M) {
+
+            // iterate over elements in the shared memory tile
+            for (int i = 0; i < TILE && t*TILE + i < N; i++) {
+
+                // multiply A[row, col] with cached x[col] and accumulate
+                sum += A[row*N + t*TILE + i] * sx[i];
+            }
+        }
+
+        // ensure all threads are done using shared memory before overwrite
+        __syncthreads();
+    }
+
+    // write final result to output if within bounds
+    if (row < M)
+        y[row] = sum;
+}
+```
+
+### Finally... Matrix Multiplication!
+
 
 
 ### cuBLAS, cuDNN, and CUTLASS
