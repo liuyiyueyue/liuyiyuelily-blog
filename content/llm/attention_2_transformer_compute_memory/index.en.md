@@ -309,3 +309,10 @@ $$
 
 Operations with high arithmetic intensity tend to be compute-bound, while operations with low arithmetic intensity tend to be memory-bound.
 
+Now, back to transformer.
+
+With a large batch size, matrix multiplications such as the $QKV$ projections and the FFN layers are usually compute-bound. Their compute grows with batch size, while data movement grows more slowly, so their arithmetic intensity is relatively high. 
+
+During decode stage, however, computation is usually memory-bound. The batch size is often very small, sometimes even 1, so matrix multiplications effectively become matrix-vector multiplications, which greatly lowers arithmetic intensity. In that regime, the bottleneck often becomes the memory bandwidth required to read model weights from HBM. 
+
+Elementwise operations such as softmax and layer normalization are also usually memory-bound, because their arithmetic cost is small relative to the amount of data they move.
