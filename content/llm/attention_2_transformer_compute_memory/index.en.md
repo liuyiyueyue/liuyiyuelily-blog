@@ -288,3 +288,18 @@ we can compare the activation memory at different batch sizes:
 - When $b = 128$, the activation memory is about $35.3 \text{ TB}$, which is about $101\times$ the parameter memory.
 
 **As batch size increases, activation memory quickly grows far beyond parameter memory.** In practice, activation recomputation is commonly used to reduce this cost. In exchange for one extra forward-pass worth of compute, it reduces the amount of activation memory that must be stored. This is fundamentally a time-for-space tradeoff.
+
+### Compute-Bound vs. Memory-Bound
+
+The **roofline model** gives a simple way to think about GPU performance. It says that the throughput of an operation is limited by two ceilings: peak compute throughput and peak memory bandwidth. If an operation hits the compute ceiling, it is **compute-bound**. If it hits the bandwidth ceiling, it is **memory-bound**.
+
+{{< figure src="./images/roofline.png" caption="Roofline model: throughput is limited by either compute throughput or memory bandwidth, depending on arithmetic intensity." align="center" >}}
+
+The key quantity is **arithmetic intensity**, the number of floating-point operations performed per byte of data moved:
+
+$$
+\text{Arithmetic intensity} = \frac{\text{FLOPs}}{\text{bytes moved}}
+$$
+
+Operations with high arithmetic intensity tend to be compute-bound, while operations with low arithmetic intensity tend to be memory-bound.
+
