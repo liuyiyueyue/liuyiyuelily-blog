@@ -372,6 +372,11 @@ __global__ void matvec_opt(float* A, float* x, float* y,
 }
 ```
 
+**Memory Bound**
+
+Focus on the naive kernel. For each of the N positions: 1 multiply + 1 add = 2 FLOPs. So about 2N FLOPs per output row. For one output row, read N floats from A and N floats from x. That is 2N floats total. Each float is 4 bytes, so memory is 2N * 4 = 8N bytes. Arithmetic intensity is 2N FLOPs / 8N bytes = 0.25 FLOPs/byte. 0.25 FLOPs/byte is very low, so GEMV is strongly memory-bound.
+
+
 ### Finally... Matrix Multiplication!
 
 
