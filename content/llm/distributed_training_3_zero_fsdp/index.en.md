@@ -2,18 +2,23 @@
 title: "Distributed Training: ZeRO and FSDP"
 date: 2025-12-15
 tags: ["llm", "distributed-training", "zero", "fsdp"]
+math: true
 ---
 
 ### ZeRo [^1]
 In conventional data-parallel training, every machine still has to hold a full copy of the model state in memory, and that memory cost does not shrink as data parallelism scales out. As a result, memory often becomes the main bottleneck in data-parallel training. 
 
-Microsoft proposed a highly influential algorithm called **Zero Redundancy Optimizer (ZeRO)** to address the memory limitations of data-parallel training, and later built the distributed training framework **DeepSpeed** on top of PyTorch around it. Its core idea is to partition model states evenly across GPUs, so the memory usage on each GPU becomes inversely proportional to the degree of data parallelism, while communication efficiency remains largely unaffected.
+Microsoft proposed a highly influential algorithm called **Zero Redundancy Optimizer (ZeRO)** to address the memory limitations of data-parallel training, and later built the distributed training framework **DeepSpeed** on top of PyTorch around it. Its core idea **ZeRO-DP** is to partition **model states** (optimizer states, gradients, and parameters) evenly across GPUs, so the memory usage on each GPU becomes inversely proportional to the degree of data parallelism, while communication efficiency remains largely unaffected. Besides model state, the remaining memory called **residual states** are used by activation, temporary buffers, and unusable fragmented memory. **ZeRO-R** is to optimize these residual memory. This section of the blog focuses on ZeRO-DP.
 
-| ZeRO Stage | What’s Sharded |
-| --- | --- |
-| **Stage 1** | Optimizer states |
-| **Stage 2** | + Gradients |
-| **Stage 3** | + Model parameters |
+ZeRO-DP has three main optimization stages: $P_{OS}$ refers to ZeRO-1, $P_{OS+g}$ refers to ZeRO-2, and $P_{OS+g+p}$ refers to ZeRO-3.
+
+| Name | Stage | Notation |What’s Sharded |
+| --- | --- | --- | --- |
+| ZeRO-1 | Stage 1 | $P_{OS}$     | Optimizer states |
+| ZeRO-2 | Stage 2 | $P_{OS+g}$   | + Gradients |
+| ZeRO-3 | Stage 3 | $P_{OS+g+p}$ | + Model parameters |
+
+{{< figure src="./images/zero-dp.png" caption="ZeRO-DP optimization stages." align="center" >}}
 
 
 ### FSDP [^2] [^3]
