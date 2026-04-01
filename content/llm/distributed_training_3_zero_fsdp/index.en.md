@@ -20,6 +20,43 @@ ZeRO-DP has three main optimization stages: $P_{OS}$ refers to ZeRO-1, $P_{OS+g}
 
 {{< figure src="./images/zero-dp.png" caption="ZeRO-DP optimization stages." align="center" >}}
 
+**Memory Reduction**
+
+In mixed-precision training, the model parameters are stored in `float16`, the model gradients are stored in `float16`, and the Adam states are stored in `float32`, including the master copy of the model parameters, the momentum, and the variance. Let the total number of model parameters be $\Phi$. Then the total memory required is
+
+$$
+2\Phi + 2\Phi + (4\Phi + 4\Phi + 4\Phi) = 4\Phi + 12\Phi = 16\Phi \text{ bytes}.
+$$
+
+This shows that the Adam states account for 75% of the memory footprint.
+
+Let the data-parallel degree be $N_d$.
+
+In ZeRO-1, only the Adam states are partitioned across GPUs, while the `float16` parameters and `float16` gradients are still replicated on every GPU. Therefore, the per-GPU memory usage is
+
+$$
+M_{\text{ZeRO-1}} = 2\Phi + 2\Phi + \frac{12\Phi}{N_d} = 4\Phi + \frac{12\Phi}{N_d}.
+$$
+
+In ZeRO-2, both the Adam states and the gradients are partitioned across GPUs, while the `float16` parameters are still replicated. Therefore, the per-GPU memory usage is
+
+$$
+M_{\text{ZeRO-2}} = 2\Phi + \frac{2\Phi}{N_d} + \frac{12\Phi}{N_d} = 2\Phi + \frac{14\Phi}{N_d}.
+$$
+
+In ZeRO-3, the Adam states, gradients, and model parameters are all partitioned across GPUs. Therefore, the per-GPU memory usage is
+
+$$
+M_{\text{ZeRO-3}} = \frac{2\Phi}{N_d} + \frac{2\Phi}{N_d} + \frac{12\Phi}{N_d} = \frac{16\Phi}{N_d}.
+$$
+
+Compared with conventional data parallelism, the per-GPU memory usage can therefore be reduced by up to $4\times$, $8\times$, and $N_d\times$ for ZeRO-1, ZeRO-2, and ZeRO-3, respectively.
+
+**Communication Overhead**
+
+TODO: "Communication Analysis of ZeRO-DP"
+
+
 
 ### FSDP [^2] [^3]
 Facebook introduced **FSDP (Fully Sharded Data Parallel)** as PyTorch’s counterpart to Microsoft’s **ZeRO** in DeepSpeed. FSDP can be viewed as an optimized version of **DDP** within PyTorch. It is still a form of data parallelism, but unlike DDP, FSDP uses **parameter sharding**. In other words, model parameters are partitioned across GPUs, whereas in DDP each GPU keeps a full copy of the parameters. This allows FSDP to achieve better training efficiency, both in terms of speed and GPU memory usage.
