@@ -379,6 +379,7 @@ Focus on the naive kernel. For each of the N positions: 1 multiply + 1 add = 2 F
 
 ### Finally... Matrix Multiplication!
 
+TODO:
 
 
 ### cuBLAS, cuDNN, and CUTLASS
@@ -386,7 +387,7 @@ Start with plain CUDA and **cuBLAS**. If you care about deep learning, learn **c
 
 For cuBLAS, matrix multiply is the right first step: run a small GEMM, then try batched GEMM and mixed precision. That teaches how to call GPU libraries and what good performance looks like.
 
-#### cuBLAS Uses Column-Major Layout
+**cuBLAS Uses Column-Major Layout**
 
 cuBLAS follows Fortran-style column-major order. For example:
 
@@ -403,7 +404,7 @@ If your matrices are row-major on the host and you want `C = A x B`, the equival
 C = B_colmajor x A_colmajor
 ```
 
-#### `cublasSgemm()`
+**`cublasSgemm()`**
 
 Single-precision GEMM uses:
 
