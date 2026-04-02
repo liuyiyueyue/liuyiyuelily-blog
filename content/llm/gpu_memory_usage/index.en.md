@@ -18,7 +18,7 @@ We refer to **activation** memory as **dynamic memory**, meaning its lifetime is
 
 ### Training
 
-During neural network training, the main components of GPU memory usage usually fall into four categories: **model parameters**, intermediate **activations** produced during the forward pass, **gradients** computed during backpropagation, and **optimizer states**.
+During neural network training, the main components of GPU memory usage usually fall into four categories: **model parameters**, intermediate **activations** produced during the forward pass, **gradients** computed during backpropagation, and **optimizer states**. For the memory footprint calculation during training, see the "Memory Reduction" section in the [Distributed Training: ZeRO and FSDP](/llm/distributed_training_3_zero_fsdp/) blog post.
 
 ### Inference
 
