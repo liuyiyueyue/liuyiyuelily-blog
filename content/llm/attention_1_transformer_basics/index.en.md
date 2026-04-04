@@ -110,7 +110,7 @@ So we calculated the attetion using two matrix multiplications. This makes paral
 ![Attention mechanism](images/attention.png)
 
 
-### Batch Norm, Layer Norm, and RMS Norm 
+### Batch Norm and Layer Norm
 
 **From Batch Norm to Layer Norm**
 
@@ -121,24 +121,6 @@ Both layer normalization and batch normalization are used to stabilize training,
 **Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.[^4]
 
 This is why Transformers use **layer normalization instead of batch normalization**. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
-
-**From Layer Norm to RMS Norm**
-
-Many modern language models replace LayerNorm with **RMSNorm**. RMSNorm is a simplified variant that normalizes by the **root mean square** of the activations and does not subtract the mean. This reduces computation while usually preserving similar model quality. In practice, RMSNorm is often preferred because it can effectively mitigate the vanishing-gradient problem in deep networks while maintaining fast training convergence.
-
-The corresponding formulas are:
-
-$$
-\hat{x}_{\mathrm{LayerNorm}} = \frac{x - \mu}{\sigma + \epsilon}
-$$
-
-{{< rawhtml >}}
-$$
-\hat{x}_{\mathrm{RMSNorm}} = \frac{x}{\operatorname{RMS}(x) + \epsilon},
-\quad \text{where} \quad
-\operatorname{RMS}(x) = \sqrt{\frac{1}{N}\sum_{i=1}^{N} x_i^2}
-$$
-{{< /rawhtml >}}
 
 
 ### Positional Encoding
