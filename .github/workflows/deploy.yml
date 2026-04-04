@@ -8,27 +8,46 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: 0.153.2
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
 
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: latest
-          extended: true
+        run: |
+          curl -L -o hugo.tar.gz "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz"
+          tar -xzf hugo.tar.gz hugo
+          echo "${PWD}" >> "$GITHUB_PATH"
+          ./hugo version
 
       - name: Build
         run: hugo
 
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          publish_dir: ./public
-          external_repository: liuyiyueyue/liuyiyueyue.github.io
-          publish_branch: main
+        env:
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+        run: |
+          if [ -z "$PERSONAL_TOKEN" ]; then
+            echo "PERSONAL_TOKEN is not set"
+            exit 1
+          fi
 
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git clone --depth 1 --branch main "https://x-access-token:${PERSONAL_TOKEN}@github.com/liuyiyueyue/liuyiyueyue.github.io.git" deploy-target
+          rsync -av --delete --exclude ".git" public/ deploy-target/
+
+          cd deploy-target
+          if git diff --quiet --exit-code; then
+            echo "No changes to deploy"
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "Deploy from liuyiyuelily-blog ${GITHUB_SHA}"
+          git push origin main
