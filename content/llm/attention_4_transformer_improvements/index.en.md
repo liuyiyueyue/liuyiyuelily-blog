@@ -14,6 +14,10 @@ This post continues the Transformer series and focuses on the changes that made 
 - MHA --> GQA or MQA
 - GELU --> gated MLP such as SwiGLU
 
+As a refresher, the below is the original transformer architecture:
+
+{{< figure src="images/transformer-with-notes.png" alt="Transformer arch with notes" width="650" align="center" >}}
+
 ### Decoder-Only Instead of Encoder-Decoder
 
 For autoregressive language modeling, the model only needs to predict the next token from previous tokens. That makes the encoder-decoder split unnecessary. Modern LLMs therefore usually keep only masked self-attention, an MLP block, residual connections, and normalization layers. This simplifies both training and inference. It also makes the model easier to scale, because every block has the same structure and all attention is causal self-attention.
@@ -37,10 +41,6 @@ This change improves optimization stability in deep networks. In practice, pre-n
 Many modern language models replace LayerNorm with **RMSNorm**. RMSNorm is a simplified variant that normalizes by the **root mean square** of the activations and does not subtract the mean. This reduces computation while usually preserving similar model quality. In practice, RMSNorm is often preferred because it can effectively mitigate the vanishing-gradient problem in deep networks while maintaining fast training convergence.
 
 The corresponding formulas are:
-
-$$
-\hat{x}_{\mathrm{LayerNorm}} = \frac{x - \mu}{\sigma + \epsilon}
-$$
 
 {{< rawhtml >}}
 $$
