@@ -9,7 +9,7 @@ How would we design an LLM inference serving system that supports multi-request 
 - What should we do when the model is too large and the KV cache exceeds GPU memory capacity?
 - How can we schedule GPU resources efficiently across many users and many models?
 
-This section will discuss each chanllenge above.
+This section discusses the main challenges above in the context of inference serving systems. The focus is on how modern servers handle concurrency, memory pressure, and scheduling efficiency in practice.
 
 ### vLLM
 
@@ -18,6 +18,8 @@ For simplicity, we use nano-vLLM as the example here [^1]. Its key components ar
 2. `Scheduler`: Maintains pending requests through queues, organizes them, and dispatches the requests that need to be executed at each step.
 3. `Model Runner`: Loads and runs the model, performing computation for each request. When `TP > 1`, the main process launches multiple `Model Runner` instances to jointly complete the forward pass.
 4. `Block Manager`: Manages the GPU memory used for the KV cache based on PagedAttention.
+
+![vLLM](images/vllm.jpg)
 
 **LLM Engine** 
 
@@ -33,7 +35,7 @@ Use tighter versions like these.
 
 **Scheduler**
 
-Scheduler is the component responsible for request scheduling and execution orchestration. It maintains two queues, `waiting` and `running`, and moves requests between them during execution. The default policy is `prefill`-first to reduce time to first token. During `decode`, if KV cache blocks are insufficient, it preempts later-admitted requests in `running` and moves them back to `waiting`. This design prioritizes admission latency and KV-cache feasibility over strict fairness. It also creates a `Block Manager` instance to manage KV cache blocks.
+Scheduler is the component responsible for request scheduling and execution orchestration. It maintains two queues, `waiting` and `running`, and moves requests between them during execution. The default **policy** is `prefill`-first to reduce time to first token. During `decode`, if KV cache blocks are insufficient, it **preempts** later-admitted requests in `running` and moves them back to `waiting`. This design **prioritizes** admission latency and KV-cache feasibility over strict fairness. It also creates a `Block Manager` instance to manage KV cache blocks.
 
 The process can be described as follows:
 
