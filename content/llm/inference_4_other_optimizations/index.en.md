@@ -22,11 +22,6 @@ We already covered some in other posts of the `LLM Inference:` series:
 
 This post covers more optimization methods used in LLM inference.
 
-### vLLM v.s. SGLang
-
-vLLM maximizes per-request efficiency with PagedAttention (memory paging for KV cache), while SGLang maximizes cross-request reuse via prefix sharing (radix tree KV cache).
-In practice: SGLang wins on prefix-heavy workloads (chat/RAG), while vLLM is more general-purpose and production-ready; both are otherwise converging in performance.
-
 ### Paged Attention (vLLM)
 
 Inference servers handle live traffic rather than a static batch job, so requests can have very different token lengths. This creates a challenge for KV cache allocation. A naive approach is to reserve a fixed-size buffer for the maximum token length for every request. Since each request has a different input length, much of that allocated memory remains unused.
