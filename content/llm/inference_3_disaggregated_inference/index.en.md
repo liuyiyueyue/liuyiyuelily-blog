@@ -7,7 +7,9 @@ tags: ["llm", "inference", "optimization"]
 
 ### What Is Disaggregated Inference (DI)?
 
-In LLM inference, the prefill and decode stages have different compute, memory, and bandwidth requirements. Prefill is typically compute-intensive, while decode is memory-bandwidth-intensive. Having both prefill and decode on the same node lead to interference. A prefill stage on a long prompt occupies the GPU and delays the decode stage for other requests. Hence, separating prefill and decode onto separate processes or hosts can improve performance. [^1] [^2] [^3] [^4]
+In LLM inference, the prefill and decode stages have different compute, memory, and bandwidth requirements. Prefill is typically compute-intensive, while decode is memory-bandwidth-intensive. Having both prefill and decode on the same node lead to **interference**. A prefill stage on a long prompt occupies the GPU and delays the decode stage for other requests. Hence, separating prefill and decode onto separate processes or hosts can improve performance. [^1] [^2] [^3] [^4]
+
+{{< figure src="./images/prefill_decode_interference.png" caption="Prefill and decode interference when both stages share the same GPU resources v.s. disaggregated inference." align="center" >}}
 
 ### Architecture
 
