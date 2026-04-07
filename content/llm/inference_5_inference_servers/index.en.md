@@ -78,11 +78,7 @@ In practice: SGLang wins on prefix-heavy workloads (chat/RAG), while vLLM is mor
 
 Beyond vLLM and SGLang, systems such as **Fireworks AI** and **NVIDIA Dynamo** also target high-throughput LLM serving. They focus on the same core problems: request scheduling, KV-cache management, batching, and multi-GPU execution. The main differences are in system design, optimization priorities, and how tightly they integrate with production infrastructure.
 
-### Memory Bandwidth Bottlenecks
-
-Many people wonder: GPUs today have extremely high compute capability, so why is inference still slow? In most inference cases, the primary bottleneck is not compute (FLOPs), but **memory bandwidth**—how fast data can be read from GPU memory.
-
-**Performance Metrics**
+### Performance Metrics
 
 Inference performance is primarily determined by two interrelated and often competing metrics: **throughput** and **latency**.
 
@@ -93,6 +89,11 @@ Inference performance is primarily determined by two interrelated and often comp
 Throughput and latency are inherently in tension. Improving throughput (e.g., via batching) often increases latency, while optimizing latency may reduce system utilization and increase cost. The key mechanism to balance this tradeoff is **concurrency**, which, through scheduling and resource management, mediates between cost efficiency and service quality (SLA).
 
 Besides, **fault tolerance** is another nontrivial serving challenge. In a distributed LLM system, failures can occur at the GPU, host, interconnect, or rack level during live traffic. Because modern serving stacks schedule work at mixed granularities such as requests, groups, and tokens, they must preserve runtime state and recover quickly. Memory management is part of the same problem: some models fit at load time but still hit OOM on long sequences without robust runtime safeguards.
+
+
+### Memory Bandwidth Bottlenecks
+
+Many people wonder: GPUs today have extremely high compute capability, so why is inference still slow? In most inference cases, the primary bottleneck is not compute (FLOPs), but **memory bandwidth**—how fast data can be read from GPU memory.
 
 **1. Single Request**
 
