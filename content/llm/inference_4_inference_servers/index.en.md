@@ -113,7 +113,7 @@ Since single-request latency is bounded by bandwidth, we can improve utilization
 
 The model weights are still loaded once per step, but now produce tokens for multiple sequences simultaneously. This does not reduce latency for an individual request. In fact, queuing may slightly increase it—but it significantly improves overall throughput and cost efficiency. See [Continuous Batching](/llm/inference_4_other_optimizations/#continuous-batching).
 
-vLLM determines batch size dynamically on each scheduling step, packing requests together until it reaches either the maximum total number of tokens or the maximum total number of sequences (requests).
+vLLM decides batching dynamically under three constraints: token budget, sequence limit, and KV-cache availability. A request is only admitted if the scheduler still has token/sequence budget and the KV cache manager can allocate enough KV blocks for it.
 
 In the same example, the system still needs to load the 18 GB model only once, but it can compute the next token for several users at the same time. As another example, one Wallstreetcn news estimates that a single H20 can support about 500 concurrent users of the full DeepSeek model on WeChat. At that scale, 100,000 to 200,000 H20s would support roughly 50 million to 100 million concurrent users [^2].
 

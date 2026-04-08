@@ -22,9 +22,9 @@ $$
 Q K^\top V
 $$
 
-![Masked self-attention over the current decoder step](masked-self-attention-step.png)
+![Masked self-attention over the current decoder step](images/masked-self-attention-step.png)
 
-![Masked self-attention over the full sequence](masked-self-attention-full.png)
+![Masked self-attention over the full sequence](images/masked-self-attention-full.png)
 
 Using KV Cache, we only need the last line q_t:
 
@@ -32,7 +32,7 @@ $$
 q_t K^\top V
 $$
 
-![KV cache reusing previously computed keys and values](kv-cache-step.png)
+![KV cache reusing previously computed keys and values](images/kv-cache-step.png)
 
 ### Why Is There a KV Cache but No Q Cache?
 - In the decoder stage, each inference step only uses the **current query**. Once that step is finished, that query will not be reused in later steps, so there is no real benefit to caching `Q`.

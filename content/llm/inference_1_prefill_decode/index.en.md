@@ -18,7 +18,7 @@ In LLM inference, prefill and decode are two distinct phases of text generati
 ### Prefill and Decode Have Different Performance Characteristics
 
 - Prefill processes the entire prompt in parallel, so the GPU spends most of its time on large matrix multiplications. This makes it **compute-bound**.
-- Decode generates one token at a time, so each step does relatively little compute but repeatedly reads model weights and KV cache from memory. This makes it **memory-bound**.
+- Decode generates one token at a time, so each step does a matrix-vector multiplication and does relatively little compute, but it repeatedly reads model weights and KV cache from memory. This makes it **memory-bound**.
 
 The roofline diagrams below illustrate the different bottlenecks of prefill and decode. [^1]
 
