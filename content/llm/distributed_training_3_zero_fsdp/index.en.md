@@ -54,7 +54,13 @@ Compared with conventional data parallelism, the per-GPU memory usage can theref
 
 **Communication Overhead**
 
-TODO: "Communication Analysis of ZeRO-DP"
+TODO: 
+"7.2 ZeRO-DP Communication Volume" + "Communication Analysis of ZeRO-DP"
+As such, instead of an all-reduce, ZeRO only
+requires a scatter-reduce operation on the gradients, incurring communication volume of Ψ.
+
+DeepSpeed之ZeRO系列：将显存优化进行到底 - basicv8vc的文章 - 知乎
+https://zhuanlan.zhihu.com/p/513571706
 
 
 
