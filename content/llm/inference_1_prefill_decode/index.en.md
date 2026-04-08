@@ -1,6 +1,6 @@
 ---
 title: "LLM Inference: Prefill and Decode"
-date: 2023-12-14
+date: 2023-12-12
 tags: ["llm", "inference", "optimization"]
 ---
 

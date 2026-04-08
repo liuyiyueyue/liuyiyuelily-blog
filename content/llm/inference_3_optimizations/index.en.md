@@ -1,5 +1,5 @@
 ---
-title: "LLM Inference: Opimization Techniques"
+title: "LLM Inference: Optimization Techniques"
 date: 2026-02-26
 tags: ["llm", "inference", "optimization"]
 ---
@@ -16,9 +16,8 @@ optimization and system-level optimization, illustrated below [^1].
 
 We already covered some in other posts of the `LLM Inference:` series:
 
-- [LLM Inference: KV Cache](/llm/inference_1_kv_cache/)
-- [LLM Inference: Prefill and Decode](/llm/inference_2_prefill_decode/)
-- [LLM Inference: Disaggregated Inference](/llm/inference_3_disaggregated_inference/)
+- [LLM Inference: KV Cache](/llm/inference_2_kv_cache/)
+- [LLM Inference: Prefill and Decode](/llm/inference_1_prefill_decode/)
 
 This post covers more optimization methods used in LLM inference.
 
@@ -67,6 +66,23 @@ When prompts are long, the prefill phase can monopolize GPU compute and delay de
 
 The key idea is to form hybrid batches: one prefill chunk keeps the GPU compute-saturated, while decode requests piggyback in the remaining slots. This improves utilization, reduces pipeline bubbles, and lowers tail latency compared with running large prefills as a single monolithic step.
 
+### Disaggregated Inference
+
+In LLM inference, the prefill and decode stages have different compute, memory, and bandwidth requirements. Prefill is typically compute-intensive, while decode is more memory-bandwidth-intensive. Running both on the same node can cause interference: a long prefill can occupy the GPU and delay decode steps for other requests. Disaggregated inference separates prefill and decode onto different processes or hosts to reduce this interference and improve overall serving performance [^7] [^8] [^9] [^10].
+
+{{< figure
+    src="images/prefill_decode_interference.png"
+    alt="Prefill and decode interference versus disaggregated inference"
+    caption="Prefill and decode interference when both stages share the same GPU resources versus disaggregated inference."
+    align="center"
+>}}
+
+The system usually includes a connector or scheduler that transfers KV cache from prefill nodes to decode nodes. Within a node this can use NVLink or NVSwitch; across nodes it can use GPUDirect RDMA.
+
+#### Heterogeneous disaggregation
+
+Different systems split inference at different boundaries. Cerebras and AWS describe disaggregated inference by separating compute-bound prefill from memory-bound decode: AWS Trainium builds the KV cache during prefill, and Cerebras CS-3 handles decode for high token output speed [^11]. NVIDIA's Vera Rubin plus Groq 3 LPX design is different: prefill stays on GPUs, and decode itself is further split so GPUs run attention while LPX accelerates latency-sensitive FFN and MoE work [^12]. In other words, Cerebras and AWS separate the major phases of inference, while NVIDIA and Groq separate sub-operations inside the decode loop.
+
 
 
 [^1]: Zixuan Zhou, Xuefei Ning, Ke Hong, Tianyu Fu, Jiaming Xu, Shiyao Li, Yuming Lou, Luning Wang, Zhihang Yuan, Xiuhong Li, Shengen Yan, Guohao Dai, Xiao-Ping Zhang, Huazhong Yang, Yuhan Dong, and Yu Wang. A Survey on Efficient Inference for Large Language Models. arXiv, April 22, 2024. <https://arxiv.org/abs/2404.14294>
@@ -75,3 +91,9 @@ The key idea is to form hybrid batches: one prefill chunk keeps the GPU compute-
 [^4]: Fast Inference from Transformers via Speculative Decoding. arXiv, November 30, 2022. <https://arxiv.org/abs/2211.17192>
 [^5]: Accelerating Large Language Model Decoding with Speculative Sampling. arXiv, February 2, 2023. <https://arxiv.org/abs/2302.01318>
 [^6]: Amey Agrawal, Ashish Panwar, Jayashree Mohan, Nipun Kwatra, Bhargav S. Gulavani, and Ramachandran Ramjee. SARATHI: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills. arXiv, August 31, 2023. <https://arxiv.org/abs/2308.16369>
+[^7]: DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. arXiv, June 6, 2024. <https://arxiv.org/pdf/2401.09670>
+[^8]: vLLM Project. "Disaggregated Prefill V1". GitHub Pull Request #10502. <https://github.com/vllm-project/vllm/pull/10502>
+[^9]: Disaggregated Inference: 18 Months Later. November 3, 2025. <https://haoailab.com/blogs/distserve-retro/>
+[^10]: Disaggregated Inference at Scale with PyTorch & vLLM. September 12, 2025. <https://pytorch.org/blog/disaggregated-inference-at-scale-with-pytorch-vllm/>
+[^11]: James Wang. Cerebras is coming to AWS. March 13, 2026. <https://www.cerebras.ai/blog/cerebras-is-coming-to-aws>
+[^12]: Kyle Aubrey and Farshad Ghodsian. Inside NVIDIA Groq 3 LPX: The Low-Latency Inference Accelerator for the NVIDIA Vera Rubin Platform. March 16, 2026. <https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/>
