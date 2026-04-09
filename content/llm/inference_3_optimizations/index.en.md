@@ -105,11 +105,15 @@ Many people wonder: GPUs today have extremely high compute capability, so why is
 
 Large language models use autoregressive decoding, generating one token at a time. For each token, the GPU must stream essentially the entire model weights from HBM into GPU. This creates a hard upper bound on generation speed:
 
+```text
 max token/s ≈ memory bandwidth / model size
+```
 
 For example, a 32B parameter model with 4-bit quantization occupies about 18GB in memory. On a GPU with 900 GB/s bandwidth, the theoretical limit is:
 
+```text
 900 / 18 ≈ 50 tokens per second
+```
 
 In reality, additional overheads such as KV cache access and other system overheads further reduce this number.
 
@@ -127,7 +131,9 @@ Another approach is to reduce the amount of data moved per step. Mixture of Expe
 
 Instead of loading the full 32B model, only a fraction (e.g., 8B) is used per step. This reduces memory traffic proportionally. In the same example, the effective data movement drops to ~4.5GB, increasing the theoretical throughput to:
 
+```text
 900 / 4.5 ≈ 200 tokens per second
+```
 
 **4. Speculative Decoding**
 
@@ -147,11 +153,11 @@ An even more extreme approach compiles model weights directly into hardware circ
 
 Though most LLM inference is bounded by memory bandwidth, some scenarios are bounded by memory capacity. Memory bandwidth limits speed. Memory capacity limits feasibility. If the KV cache for long sequences or many concurrent requests does not fit, you get OOM or have to evict/preempt requests.
 
-Common strategies to reduce memory capacity overhead in LLM inference are mostly about shrinking or managing the **KV cache**, since that is usually the dominant runtime memory consumer. See backround in [KV Cache](/llm/inference_1_kv_cache). 
+Common strategies to reduce memory capacity overhead in LLM inference are mostly about shrinking or managing the **KV cache**, since that is usually the dominant runtime memory consumer. See background in [KV Cache](/llm/inference_1_kv_cache).
 
-Beyond the KV cache, the bottleneck may also come from **model weights** or **activation memory**. If the main issue is model weights, the usual solutions are lower precision, quantization, or weight compression. If the model still does not fit on a single GPU, it must be sharded across multiple GPUs, for example with tensor parallelism or pipeline parallelism. If the main issue is activation memory, especially during prefill, the typical fixes are to limit prompt length, reduce prefill batch size, or use chunked prefill so that a very long prompt is processed in smaller pieces. 
+Beyond the KV cache, the bottleneck may also come from **model weights** or **activation memory**. If the main issue is model weights, the usual solutions are lower precision, quantization, or weight compression. If the model still does not fit on a single GPU, it must be sharded across multiple GPUs, for example with tensor parallelism or pipeline parallelism. If the main issue is activation memory, especially during prefill, the typical fixes are to limit prompt length, reduce prefill batch size, or use chunked prefill so that a very long prompt is processed in smaller pieces.
 
-In summary, below are three categories of optmizations:
+In summary, below are three categories of optimizations:
 
 System-level optimizations:
 1. Reduce concurrency or max context length. This is the simplest operational control when memory is the limiting factor.
@@ -166,7 +172,6 @@ Model-level optimizations:
 
 Numerical-level optimizations:
 1. Quantize the KV cache. Store KV in lower precision such as `FP8` or `INT8` instead of `FP16`/`BF16`.
-
 
 
 [^1]: Zixuan Zhou, Xuefei Ning, Ke Hong, Tianyu Fu, Jiaming Xu, Shiyao Li, Yuming Lou, Luning Wang, Zhihang Yuan, Xiuhong Li, Shengen Yan, Guohao Dai, Xiao-Ping Zhang, Huazhong Yang, Yuhan Dong, and Yu Wang. A Survey on Efficient Inference for Large Language Models. arXiv, April 22, 2024. <https://arxiv.org/abs/2404.14294>
