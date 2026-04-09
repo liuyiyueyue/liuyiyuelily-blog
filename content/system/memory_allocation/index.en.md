@@ -19,11 +19,21 @@ The buddy allocator organizes memory by orders of size `2^k` and maintains a fle
 
 A sample implementation is Yunfeng's ~200-line buddy allocator code: https://github.com/cloudwu/buddy/blob/master/buddy.c
 
+### Slab vs. Buddy
+
+What is the difference between buddy and size-class slab allocators?
+
+- slab: faster allocation, but more internal fragmentation. Common in user-space allocators.
+- buddy: supports merging, so it usually has less external fragmentation. Common in kernel page allocators.
+
+> - internal fragmentation: wasted space inside an allocated block, usually because the allocator rounds a request up to a larger size class.
+> - external fragmentation: free memory exists, but it is split into small non-contiguous pieces, so a larger allocation still cannot be satisfied.
+
 ### CUDA Memory Pool
 
 The CUDA driver maintains a global GPU memory pool by default. When memory is freed asynchronously, it is returned to this pool and can be reused by later allocations. `cudaMallocAsync` and `cudaFreeAsync` are built on top of the CUDA memory pool. By reusing freed buffers instead of repeatedly requesting new memory from the OS, this pool improves allocation efficiency and helps reduce fragmentation over time. CUDA also exposes knobs such as `cudaMemPoolAttrReleaseThreshold`, `cudaMemPoolTrimTo`, and `cudaMemPoolSetAttribute` to control when cached memory is released and how pool behavior is configured. [^1]
 
-### How PyTorch Implements a Memory Pool
+### PyTorch Memory Pool
 
 One should not rely on calling `cudaMalloc` and `cudaFree` for every allocation. `cudaMalloc` is slow and synchronous, and `cudaFree` may trigger a device-wide synchronization.
 PyTorch has the `CUDACachingAllocator`, which is its GPU memory allocator (memory pool) that caches and reuses CUDA memory blocks instead of calling `cudaMalloc`/`cudaFree` for every tensor. [^2] [^3]
