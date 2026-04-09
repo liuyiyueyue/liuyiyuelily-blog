@@ -21,6 +21,19 @@ We already covered some in other posts of the `LLM Inference:` series:
 
 This post first introduces several common inference optimization techniques, then explains when to use them to improve performance and reduce memory usage.
 
+## Table of Contents
+
+- [Inference Optimization Techniques](#inference-optimization-techniques)
+    - [Paged Attention (vLLM)](#paged-attention-vllm)
+    - [Continuous Batching](#continuous-batching)
+    - [Speculative Decoding](#speculative-decoding)
+    - [Chunked prefill](#chunked-prefill)
+    - [Disaggregated Inference](#disaggregated-inference)
+- [Root Cause Bottlenecks](#root-cause-bottlenecks)
+    - [Performance Metrics](#performance-metrics)
+    - [Memory Bandwidth Bottlenecks](#memory-bandwidth-bottlenecks)
+    - [Memory Capacity Bottlenecks](#memory-capacity-bottlenecks)
+
 ## Inference Optimization Techniques
 
 ### Paged Attention (vLLM)
