@@ -29,6 +29,16 @@ What is the difference between buddy and size-class slab allocators?
 > - internal fragmentation: wasted space inside an allocated block, usually because the allocator rounds a request up to a larger size class.
 > - external fragmentation: free memory exists, but it is split into small non-contiguous pieces, so a larger allocation still cannot be satisfied.
 
+### `jemalloc()`
+
+`jemalloc()` is a general-purpose allocator designed to reduce fragmentation and scale well under concurrency.
+
+- It groups small allocations into size classes, so requests are rounded up and served from fixed-size bins.
+- It uses arenas to reduce lock contention. Different threads can allocate from different arenas instead of competing for one global heap.
+- It caches recently freed objects through thread-local fast paths, which makes small allocations and frees cheap.
+- For large allocations, it manages memory in page-sized extents and tracks them with metadata so blocks can be split, reused, and sometimes returned to the OS.
+- It combines slab-style allocation for small objects with more flexible extent management for large objects, balancing speed, fragmentation, and scalability.
+
 ### CUDA Memory Pool
 
 The CUDA driver maintains a global GPU memory pool by default. When memory is freed asynchronously, it is returned to this pool and can be reused by later allocations. `cudaMallocAsync` and `cudaFreeAsync` are built on top of the CUDA memory pool. By reusing freed buffers instead of repeatedly requesting new memory from the OS, this pool improves allocation efficiency and helps reduce fragmentation over time. CUDA also exposes knobs such as `cudaMemPoolAttrReleaseThreshold`, `cudaMemPoolTrimTo`, and `cudaMemPoolSetAttribute` to control when cached memory is released and how pool behavior is configured. [^1]
