@@ -23,21 +23,11 @@ A sample implementation is Yunfeng's ~200-line buddy allocator code: https://git
 
 What is the difference between buddy and size-class slab allocators?
 
-- slab: faster allocation, but more internal fragmentation. Common in user-space allocators.
-- buddy: supports merging, so it usually has less external fragmentation. Common in kernel page allocators.
-
-> - internal fragmentation: wasted space inside an allocated block, usually because the allocator rounds a request up to a larger size class.
-> - external fragmentation: free memory exists, but it is split into small non-contiguous pieces, so a larger allocation still cannot be satisfied.
+Slab allocation is usually faster, but it wastes space inside allocated blocks because requests are rounded up to size classes. Buddy allocation supports merging adjacent free blocks, so it usually has less external fragmentation and is common in kernel page allocators. Internal fragmentation means wasted space inside an allocated block, while external fragmentation means free memory exists but is broken into non-contiguous pieces that cannot satisfy a larger request.
 
 ### `jemalloc()`
 
-`jemalloc()` is a general-purpose allocator designed to reduce fragmentation and scale well under concurrency.
-
-- It groups small allocations into size classes, so requests are rounded up and served from fixed-size bins.
-- It uses arenas to reduce lock contention. Different threads can allocate from different arenas instead of competing for one global heap.
-- It caches recently freed objects through thread-local fast paths, which makes small allocations and frees cheap.
-- For large allocations, it manages memory in page-sized extents and tracks them with metadata so blocks can be split, reused, and sometimes returned to the OS.
-- It combines slab-style allocation for small objects with more flexible extent management for large objects, balancing speed, fragmentation, and scalability.
+`jemalloc()` is a general-purpose allocator that uses size classes for small allocations, arenas to reduce lock contention, and fast per-thread caches for recently freed objects. Large allocations are managed as page-sized extents that can be split, reused, and sometimes returned to the OS. In practice, it combines slab-style allocation for small objects with more flexible management for large objects, which helps balance speed, fragmentation, and concurrency.
 
 ### CUDA Memory Pool
 
