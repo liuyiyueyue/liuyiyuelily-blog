@@ -16,10 +16,12 @@ optimization and system-level optimization, illustrated below [^1].
 
 We already covered some in other posts of the `LLM Inference:` series:
 
-- [LLM Inference: KV Cache](/llm/inference_2_kv_cache/)
 - [LLM Inference: Prefill and Decode](/llm/inference_1_prefill_decode/)
+- [LLM Inference: KV Cache](/llm/inference_2_kv_cache/)
 
-This post covers more optimization methods used in LLM inference.
+This post first introduces several common inference optimization techniques, then explains when to use them to improve performance and reduce memory usage.
+
+## Inference Optimization Techniques
 
 ### Paged Attention (vLLM)
 
@@ -54,13 +56,10 @@ Continuous batching is a special case of dynamic batching and one of the main re
 
 ### Speculative Decoding
 
-(这章写的不走心啊！)
-
-In normal decoding, each new token requires a full forward pass through the large LLM. This is expensive, especially for long generations. Speculative decoding uses a small, fast draft model to propose several tokens ahead, and then the large target model verifies them in parallel [^4] [^5].
+In normal decoding, each new token requires a full forward pass through the large LLM. This is expensive, especially for long generations. Speculative decoding changes the computation pattern itself. Instead of generating one token per forward pass, a small, fast model first predicts multiple tokens. The large model then verifies these predictions in a single pass. If the predictions are correct, one expensive memory load yields multiple tokens. This effectively increases tokens produced per unit of memory bandwidth, improving single-user latency without changing hardware [^4] [^5].
 
 
 ### Chunked prefill
-(这章也写的不走心啊！)
 
 When prompts are long, the prefill phase can monopolize GPU compute and delay decode-heavy traffic. Chunked prefill addresses this by splitting a long prefill into equal-sized chunks and scheduling those chunks alongside decode requests [^6].
 
@@ -83,14 +82,15 @@ The system usually includes a connector or scheduler that transfers KV cache fro
 
 Different systems split inference at different boundaries. Cerebras and AWS describe disaggregated inference by separating compute-bound prefill from memory-bound decode: AWS Trainium builds the KV cache during prefill, and Cerebras CS-3 handles decode for high token output speed [^11]. NVIDIA's Vera Rubin plus Groq 3 LPX design is different: prefill stays on GPUs, and decode itself is further split so GPUs run attention while LPX accelerates latency-sensitive FFN and MoE work [^12]. In other words, Cerebras and AWS separate the major phases of inference, while NVIDIA and Groq separate sub-operations inside the decode loop.
 
+## Root Cause Bottlenecks
 
 ### Performance Metrics
 
 Inference performance is primarily determined by two interrelated and often competing metrics: **throughput** and **latency**.
 
-1. **Throughput** measures the total amount of work a system can process per unit time. In large model systems, it is typically expressed as **tokens per second (tokens/s)**. It reflects overall system capacity and directly impacts cost: the more tokens generated within the same time window, the lower the cost per token.
+1. **Throughput** (吞吐量) measures the total amount of work a system can process per unit time. In large model systems, it is typically expressed as **tokens per second (tokens/s)**. It reflects overall system capacity and directly impacts cost: the more tokens generated within the same time window, the lower the cost per token.
 
-2. **Latency** measures the response time for a single request and can be further decomposed into two key metrics. **Time to First Token (TTFT)** is the time from request arrival to the first generated token, determining perceived responsiveness. **Time per Output Token (TPOT)** is the average time to generate each subsequent token, determining the effective generation speed.
+2. **Latency** (延迟) measures the response time for a single request and can be further decomposed into two key metrics. **Time to First Token (TTFT)** is the time from request arrival to the first generated token, determining perceived responsiveness. **Time per Output Token (TPOT)** is the average time to generate each subsequent token, determining the effective generation speed.
 
 Throughput and latency are inherently in tension. Improving throughput (e.g., via batching) often increases latency, while optimizing latency may reduce system utilization and increase cost. The key mechanism to balance this tradeoff is **concurrency**, which, through scheduling and resource management, mediates between cost efficiency and service quality (SLA).
 
@@ -115,9 +115,7 @@ In reality, additional overheads such as KV cache access and other system overhe
 
 **2. Concurrent Requests**
 
-Since single-request latency is bounded by bandwidth, we can improve utilization via **batching**. Instead of serving one request at a time, the system aggregates multiple requests and processes them together.
-
-The model weights are still loaded once per step, but now produce tokens for multiple sequences simultaneously. This does not reduce latency for an individual request. In fact, queuing may slightly increase it—but it significantly improves overall throughput and cost efficiency. See [Continuous Batching](/llm/inference_4_other_optimizations/#continuous-batching).
+Since single-request latency is bounded by bandwidth, we can improve utilization via **batching**. Instead of serving one request at a time, the system aggregates multiple requests and processes them together. The model weights are still loaded once per step, but now produce tokens for multiple sequences simultaneously. This does not reduce latency for an individual request. In fact, queuing may slightly increase it, but it significantly improves overall throughput and cost efficiency. See [Batching](/llm/inference_1_prefill_decode/#batching) and [Continuous Batching](/llm/inference_3_optimizations/#continuous-batching).
 
 vLLM decides batching dynamically under three constraints: token budget, sequence limit, and KV-cache availability. A request is only admitted if the scheduler still has token/sequence budget and the KV cache manager can allocate enough KV blocks for it.
 
@@ -133,7 +131,7 @@ Instead of loading the full 32B model, only a fraction (e.g., 8B) is used per st
 
 **4. Speculative Decoding**
 
-Speculative decoding changes the computation pattern itself. Instead of generating one token per forward pass, a small, fast model first predicts multiple tokens. The large model then verifies these predictions in a single pass. If the predictions are correct, one expensive memory load yields multiple tokens. This effectively increases tokens produced per unit of memory bandwidth, improving single-user latency without changing hardware. See [Speculative Decoding](/llm/inference_4_other_optimizations/#speculative-decoding).
+See [Speculative Decoding](/llm/inference_3_optimizations/#speculative-decoding).
 
 For example, the 18 GB model is loaded just once, to verify whether all tokens generated by the small model are correct at the same time. 
 
@@ -153,14 +151,14 @@ Common strategies to reduce memory capacity overhead in LLM inference are mostly
 
 Beyond the KV cache, the bottleneck may also come from **model weights** or **activation memory**. If the main issue is model weights, the usual solutions are lower precision, quantization, or weight compression. If the model still does not fit on a single GPU, it must be sharded across multiple GPUs, for example with tensor parallelism or pipeline parallelism. If the main issue is activation memory, especially during prefill, the typical fixes are to limit prompt length, reduce prefill batch size, or use chunked prefill so that a very long prompt is processed in smaller pieces. 
 
-Below are three categories of optmizations:
+In summary, below are three categories of optmizations:
 
 System-level optimizations:
 1. Reduce concurrency or max context length. This is the simplest operational control when memory is the limiting factor.
-2. Paged/block-based KV allocation. Systems like vLLM's PagedAttention allocate fixed-size blocks instead of large contiguous buffers, which reduces fragmentation and wasted space.
+2. [Paged/block-based KV allocation](#paged-attention-vllm). Systems like vLLM's PagedAttention allocate fixed-size blocks instead of large contiguous buffers, which reduces fragmentation and wasted space.
 3. Prefix cache reuse. Reuse KV blocks for requests with the same prompt prefix, often with copy-on-write, such as SGLang.
-4. Chunked prefill. Split very long prompts into smaller chunks to avoid large temporary peaks during prefill.
-5. KV eviction/offloading. Move cold KV blocks to CPU memory or evict lower-priority requests when GPU memory is tight.
+4. [Chunked prefill](#chunked-prefill). Split very long prompts into smaller chunks to avoid large temporary peaks during prefill.
+5. KV eviction/offloading. Move cold KV blocks to CPU memory or evict lower-priority requests when GPU memory is tight. This often appears together with [disaggregated inference](#disaggregated-inference) at the system level.
 
 Model-level optimizations:
 1. Use MQA/GQA. Multi-Query Attention or Grouped-Query Attention reduces KV size by sharing keys/values across heads.

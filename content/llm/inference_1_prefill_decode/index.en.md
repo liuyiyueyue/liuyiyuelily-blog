@@ -24,7 +24,7 @@ The roofline diagrams below illustrate the different bottlenecks of prefill and 
 
 ![Attention roofline](images/attention-roofline.png)
 
-### Concurrency
+### Batching
 
 Why prefills and/or decode from different requests can be execute at the same time on a GPU? Batching is handled by the inference server (scheduler), which aggregates multiple requests into a single tensor before launching one large GEMM on the GPU. The GPU is unaware of individual requests; it only executes the combined matrix operation.
 
