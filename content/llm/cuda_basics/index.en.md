@@ -253,6 +253,21 @@ cublasSgemm(handle,
 
 A complete example is here: [simple_mat_mul.cu](./code/simple_mat_mul.cu.txt).
 
+### Error Handling
+
+CUDA functions return `cudaError_t`, and if success, they return `cudaSuccess`. It's recommended to always check returned error status. A error handling macro often looks like the below. The `while (0)` never actually loops. It just wraps the code into a block so C/C++ syntax stays safe.
+
+```c
+#define CUDA_CHECK(call)                                                      \
+    do {                                                                      \
+        cudaError_t err = (call);                                             \
+        if (err != cudaSuccess) {                                             \
+            std::cerr << cudaGetErrorString(err) << std::endl;                \
+            std::exit(EXIT_FAILURE);                                          \
+        }                                                                     \
+    } while (0)
+```
+
 ### Summary
 
 The four-layer architecture of CUDA
