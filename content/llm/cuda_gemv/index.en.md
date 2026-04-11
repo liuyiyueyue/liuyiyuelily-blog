@@ -5,16 +5,13 @@ tags: ["llm", "cuda", "optimization"]
 math: true
 ---
 
-TODO:
-1. 每个算法的FLOPs总数
-
 Matrix-vector multiplication (GEMV) is a foundational operation in linear algebra. Let matrix $A \in \mathbb{R}^{M \times N}$, vector $x \in \mathbb{R}^{N}$, and vector $y \in \mathbb{R}^{M}$. Then
 
 $$
 y = Ax
 $$
 
-**Naive Kernel**
+### Naive Kernel
 
 In the naive kernel implementation below, each thread handles a row of matrix $A$, an element of vector $x$, and an element of vector $y$. This kernel is simple and performs coalesced access on A (row-major). However, the vector $x$ is reloaded N times per thread, wasting memory bandwidth.
 
@@ -32,65 +29,55 @@ __global__ void matvec1(float* A, float* x, float* y,
 }
 ```
 
-**Reuse Vector $x$**
+### Shared Memory
 
-Intead of reloading vector $x$ multiple times, we use the shared memory to store a tile of it. Each thread loads an element of $x$ into the shared tile $sx$
-
-```text
-x:  [ x0 x1 x2 x3 | x4 x5 x6 x7 | ... ]
-        ↑ TILE 0        ↑ TILE 1
-```
-
-There is the code for the optimized kernel:
+In the naive kernel implementation above, each thread loads the vector $x$ into its local memory. To optimize the kernel, each thread still handles one row of A. However, threads cooperatively load a tile of $x$ into shared memory. After synchronization, each thread computes a partial dot product using the cached tile. We iterate over tiles until covering $N$.
 
 ```c
-#define TILE 256
-// number of elements of x loaded into shared memory per iteration
-
-__global__ void matvec_opt(float* A, float* x, float* y,
-                           int M, int N) {
-
-    // shared memory buffer to cache a tile of vector x
-    __shared__ float sx[TILE];
-
+__global__ void gemv_2(float* A, float* x, float* y, int M, int N) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
 
-    float sum = 0;
+    __shared__ float s_x[256];  // assume blockDim.x = 256
 
-    // loop over x (and columns of A) in tiles
-    for (int t = 0; t < (N + TILE - 1)/TILE; t++) {
+    float sum = 0.0f;
 
-        // compute global index into x for this tile
-        int idx = t*TILE + threadIdx.x;
+	// tile size equals to blockDim.x
+    for (int tile = 0; tile < N; tile += blockDim.x) {
 
-        // load one element of x into shared memory if within bounds
-        if (idx < N)
-            sx[threadIdx.x] = x[idx];
+        // each thread loads one element of x into shared memory,
+		// given 0 <= threadIdx.x < blockDim.x = 256
+        int col = tile + threadIdx.x;
+        if (col < N) {
+            s_x[threadIdx.x] = x[col];
+        } else {
+            s_x[threadIdx.x] = 0.0f;
+        }
 
-        // ensure all threads have finished loading shared memory
-        __syncthreads();
+        __syncthreads();  // ensure all x tile is loaded
 
+        // compute partial dot product
         if (row < M) {
-
-            // iterate over elements in the shared memory tile
-            for (int i = 0; i < TILE && t*TILE + i < N; i++) {
-
-                // multiply A[row, col] with cached x[col] and accumulate
-                sum += A[row*N + t*TILE + i] * sx[i];
+            for (int i = 0; i < blockDim.x && (tile + i) < N; i++) {
+                sum += A[row * N + (tile + i)] * s_x[i];
             }
         }
 
-        // ensure all threads are done using shared memory before overwrite
-        __syncthreads();
+        __syncthreads();  // before next tile overwrite
     }
 
-    // write final result to output if within bounds
-    if (row < M)
+    if (row < M) {
         y[row] = sum;
+    }
 }
 ```
 
-**Memory Bound**
+{{< figure src="./images/gemv_shared_mem.png" align="center" >}}
+
+****
+
+
+
+### Memory Bound
 
 For the naive GEMV kernel over the whole $M \times N$ matrix, there are $MN$ multiply operations and about $MN$ add operations, so the total work is approximately $2MN$ FLOPs.
 

@@ -1,0 +1,53 @@
+#include <cuda_runtime.h>
+
+#include <cstdlib>
+#include <iostream>
+
+#define CUDA_CHECK(call)                                                      \
+    do {                                                                      \
+        cudaError_t err = (call);                                             \
+        if (err != cudaSuccess) {                                             \
+            std::cerr << cudaGetErrorString(err) << std::endl;                \
+            std::exit(EXIT_FAILURE);                                          \
+        }                                                                     \
+    } while (0)
+
+__global__ void matvec_naive(const float* A, const float* x, float* y, int M, int N) {
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < M) {
+        float sum = 0.0f;
+        for (int col = 0; col < N; ++col) {
+            sum += A[row * N + col] * x[col];
+        }
+        y[row] = sum;
+    }
+}
+
+int main() {
+    const int M = 16384;
+    const int N = 8192;
+    const int threadsPerBlock = 256;
+
+    size_t bytes_A = (size_t)M * N * sizeof(float);
+    size_t bytes_x = (size_t)N * sizeof(float);
+    size_t bytes_y = (size_t)M * sizeof(float);
+
+    float *A, *x, *y;
+    CUDA_CHECK(cudaMallocManaged(&A, bytes_A));
+    CUDA_CHECK(cudaMallocManaged(&x, bytes_x));
+    CUDA_CHECK(cudaMallocManaged(&y, bytes_y));
+
+    for (int i = 0; i < M * N; ++i) A[i] = 1.0f;
+    for (int i = 0; i < N; ++i) x[i] = 1.0f;
+
+    int numBlocks = (M + threadsPerBlock - 1) / threadsPerBlock;
+    matvec_naive<<<numBlocks, threadsPerBlock>>>(A, x, y, M, N);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    std::cout << "y[0]=" << y[0] << "\n";
+    CUDA_CHECK(cudaFree(A));
+    CUDA_CHECK(cudaFree(x));
+    CUDA_CHECK(cudaFree(y));
+    return 0;
+}
