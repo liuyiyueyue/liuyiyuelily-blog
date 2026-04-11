@@ -103,7 +103,7 @@ Inference performance is primarily determined by two interrelated and often comp
 
 1. **Throughput** (吞吐量) measures the total amount of work a system can process per unit time. In large model systems, it is typically expressed as **tokens per second (tokens/s)**. It reflects overall system capacity and directly impacts cost: the more tokens generated within the same time window, the lower the cost per token.
 
-2. **Latency** (延迟) measures the response time for a single request and can be further decomposed into two key metrics. **Time to First Token (TTFT)** is the time from request arrival to the first generated token, determining perceived responsiveness. **Time per Output Token (TPOT)** is the average time to generate each subsequent token, determining the effective generation speed.
+2. **Latency** (延迟) measures the response time for a single request and can be further decomposed into two key metrics. **Time to First Token (TTFT)** is the time from request arrival to the first generated token, determining perceived responsiveness. **Time per Output Token (TPOT)** is the average time to generate each subsequent token, determining the effective generation speed. TTFT is mainly determined by prefill, while TPOT is mainly determined by decode.
 
 Throughput and latency are inherently in tension. Improving throughput (e.g., via batching) often increases latency, while optimizing latency may reduce system utilization and increase cost. The key mechanism to balance this tradeoff is **concurrency**, which, through scheduling and resource management, mediates between cost efficiency and service quality (SLA).
 
