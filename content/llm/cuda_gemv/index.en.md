@@ -5,6 +5,9 @@ tags: ["llm", "cuda", "optimization"]
 math: true
 ---
 
+TODO:
+1. 每个算法的FLOPs总数
+
 Matrix-vector multiplication (GEMV) is a foundational operation in linear algebra. Let matrix $A \in \mathbb{R}^{M \times N}$, vector $x \in \mathbb{R}^{N}$, and vector $y \in \mathbb{R}^{M}$. Then
 
 $$
@@ -31,7 +34,7 @@ __global__ void matvec1(float* A, float* x, float* y,
 
 **Reuse Vector $x$**
 
-Intead of reloading vector $x$ multiple times, we use the shared memory to store a tile of it. Each thread loads an element of `x` into the shared tile `sx`
+Intead of reloading vector $x$ multiple times, we use the shared memory to store a tile of it. Each thread loads an element of $x$ into the shared tile $sx$
 
 ```text
 x:  [ x0 x1 x2 x3 | x4 x5 x6 x7 | ... ]
@@ -89,4 +92,16 @@ __global__ void matvec_opt(float* A, float* x, float* y,
 
 **Memory Bound**
 
-Focus on the naive kernel. For each of the N positions: 1 multiply + 1 add = 2 FLOPs. So about 2N FLOPs per output row. For one output row, read N floats from A and N floats from x. That is 2N floats total. Each float is 4 bytes, so memory is 2N * 4 = 8N bytes. Arithmetic intensity is 2N FLOPs / 8N bytes = 0.25 FLOPs/byte. 0.25 FLOPs/byte is very low, so GEMV is strongly memory-bound.
+For the naive GEMV kernel over the whole $M \times N$ matrix, there are $MN$ multiply operations and about $MN$ add operations, so the total work is approximately $2MN$ FLOPs.
+
+The kernel reads all $MN$ floats from $A$. Although $x$ contains only $N$ floats, the kernel accesses those $N$ elements for each of the $M$ output rows, which contributes another $MN$ float accesses. Besides these reads, the kernel writes $M$ floats to $y$. Each float is 4 bytes, so the total memory traffic is $4(MN + MN + M)$ bytes.
+
+Therefore, the arithmetic intensity is approximately
+
+$$
+\frac{2MN}{4(MN + MN + M)} \lesssim 0.25
+$$
+
+FLOPs/byte.
+
+This is very low, so GEMV is strongly memory-bound.
