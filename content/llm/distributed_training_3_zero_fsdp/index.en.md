@@ -52,6 +52,7 @@ $$
 
 Compared with conventional data parallelism, the per-GPU memory usage can therefore be reduced by up to $4\times$, $8\times$, and $N_d\times$ for ZeRO-1, ZeRO-2, and ZeRO-3, respectively.
 
+<!--
 **Communication Overhead**
 
 TODO: 
@@ -61,7 +62,7 @@ requires a scatter-reduce operation on the gradients, incurring communication vo
 
 DeepSpeed之ZeRO系列：将显存优化进行到底 - basicv8vc的文章 - 知乎
 https://zhuanlan.zhihu.com/p/513571706
-
+-->
 
 
 ### FSDP [^2] [^3]

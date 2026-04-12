@@ -80,3 +80,4 @@ Beyond vLLM and SGLang, systems such as **Fireworks AI** and **NVIDIA Dynamo** a
 
 
 [^1]: Nano-vLLM <https://github.com/GeeeekExplorer/nano-vllm>
+[^2]: Aleksa Gordic, "Inside vLLM: Anatomy of a High-Throughput LLM Inference System" <https://www.aleksagordic.com/blog/vllm>

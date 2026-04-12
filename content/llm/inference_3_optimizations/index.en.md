@@ -4,12 +4,6 @@ date: 2026-02-26
 tags: ["llm", "inference", "optimization"]
 ---
 
-<!--
-TODO:
-    - prefix caching
--->
-
-
 A survey summarizes the inference optimization methods into three levels, i.e., data-level optimization, model-level
 optimization and system-level optimization, illustrated below [^1].
 
@@ -109,6 +103,13 @@ The system usually includes a connector or scheduler that transfers KV cache fro
 #### Heterogeneous disaggregation
 
 Different systems split inference at different boundaries. Cerebras and AWS describe disaggregated inference by separating compute-bound prefill from memory-bound decode: AWS Trainium builds the KV cache during prefill, and Cerebras CS-3 handles decode for high token output speed [^11]. NVIDIA's Vera Rubin plus Groq 3 LPX design is different: prefill stays on GPUs, and decode itself is further split so GPUs run attention while LPX accelerates latency-sensitive FFN and MoE work [^12]. In other words, Cerebras and AWS separate the major phases of inference, while NVIDIA and Groq separate sub-operations inside the decode loop.
+
+<!-- TODO:
+## Multi-Node Inference
+
+From UniprocExecutor to MultiProcExecutor
+https://www.aleksagordic.com/blog/vllm#ref-9
+-->
 
 ## Root Cause Bottlenecks
 
@@ -216,8 +217,9 @@ To reduce the TPOT, we can apply a set of techniques on decode as below:
 
 1. [Continuous Batching](#continuous-batching) mainly helps decode because decode runs token by token, and different requests finish at different times. 
 2. [CUDA Graph](/llm/cuda_graph/index.en.md). Each decode step has a fixed computation graph, with only the input token changing. CUDA Graph records all CUDA kernels in an entire decode step as a graph and replays it during inference, eliminating the overhead of Python scheduling and CUDA kernel launches.
+<!-- TODO:
 3. 未完待续 https://zhuanlan.zhihu.com/p/2013203040564454281
-
+-->
 
 
 
