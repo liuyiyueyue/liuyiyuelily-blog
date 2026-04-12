@@ -82,7 +82,9 @@ Continuous batching is a special case of dynamic batching and one of the main re
 
 ### Speculative Decoding
 
-In normal decoding, each new token requires a full forward pass through the large LLM. This is expensive, especially for long generations. Speculative decoding changes the computation pattern itself. Instead of generating one token per forward pass, a small, fast model first predicts multiple tokens. The large model then verifies these predictions in a single pass. If the predictions are correct, one expensive memory load yields multiple tokens. This effectively increases tokens produced per unit of memory bandwidth, improving single-user latency without changing hardware [^4] [^5].
+In normal autoregressive decoding, the large model must generate tokens one by one because each next token depends on the previously chosen outputs. Speculative decoding speeds this up by letting a small, fast model first propose several future tokens, then having the large model verify that proposed continuation in one pass; if most drafted tokens are accepted, one expensive large-model step can produce multiple output tokens, improving single-user latency without changing hardware [^4] [^5].
+
+Speculative decoding is fast because a small model first proposes several future tokens, which gives the large model a concrete continuation that it can verify in parallel in one pass instead of generating one token per sequential decode step. The large model cannot generate multiple future tokens at once on its own because autoregressive decoding makes each token depend on previously chosen outputs, but it can efficiently evaluate a proposed sequence when those candidate tokens are already provided.
 
 
 ### Chunked prefill
