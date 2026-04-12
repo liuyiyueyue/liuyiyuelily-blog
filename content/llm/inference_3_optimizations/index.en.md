@@ -4,6 +4,12 @@ date: 2026-02-26
 tags: ["llm", "inference", "optimization"]
 ---
 
+<!--
+TODO:
+    - prefix caching
+-->
+
+
 A survey summarizes the inference optimization methods into three levels, i.e., data-level optimization, model-level
 optimization and system-level optimization, illustrated below [^1].
 
@@ -25,6 +31,7 @@ This post first introduces several common inference optimization techniques, the
 
 - [Inference Optimization Techniques](#inference-optimization-techniques)
     - [Paged Attention (vLLM)](#paged-attention-vllm)
+    - [Prefix Caching](#prefix-caching)
     - [Continuous Batching](#continuous-batching)
     - [Speculative Decoding](#speculative-decoding)
     - [Chunked prefill](#chunked-prefill)
@@ -52,6 +59,12 @@ This is analogous to OS virtual memory:
 | Physical page              | Physical KV cache block in GPU memory     |
 | Page table                 | Block table mapping logical to physical blocks |
 | Memory allocator           | KV cache manager / block allocator        |
+
+### Prefix Caching
+
+When multiple requests share the same prompt prefix, prefix caching avoids recomputing the KV cache for that shared prefix. Instead of rebuilding those KV states during prefill for every request, the server reuses previously computed cached blocks. This mainly reduces prefill cost and improves time to first token.
+
+In vLLM, prefix caching is implemented on top of block-based KV-cache management. Cached KV blocks are identified by hashes of the prefix contents, so later requests can reuse matching blocks instead of recomputing them.
 
 
 ### Continuous Batching
@@ -185,6 +198,25 @@ Model-level optimizations:
 
 Numerical-level optimizations:
 1. Quantize the KV cache. Store KV in lower precision such as `FP8` or `INT8` instead of `FP16`/`BF16`.
+
+### Reduce TTFT from Prefill
+
+To reduce the TTFT, we can apply a set of techniques on prefill as below:
+
+1. FlashAttention mainly helps prefill because prefill computes attention over long prompt sequences in parallel, creating heavy attention memory traffic. During decode, the query length is usually 1, so the bottleneck shifts to KV-cache reads and memory bandwidth, leaving much less room for FlashAttention to help. In addition, it's memory-efficient as well, reducing the memory usage during prefill.
+2. [Chunked prefill](#chunked-prefill) helps prefill because it splits a long prompt into smaller chunks, preventing one large prefill from monopolizing the GPU. It does not directly help decode, because decode is already incremental and is usually bottlenecked by KV-cache access and memory bandwidth instead.
+3. Prefill can also be scaled across multiple GPUs with tensor parallelism, sequence parallelism, or prefill-decode disaggregation. The main benefit is near-linear prefill throughput scaling.
+4. Sparse attention, linear attention, and SSM-style architectures reduce the O(N^2) cost of prefill on long sequences. They mainly help prefill because prefill processes the full prompt, where attention cost grows with sequence length quadratically. During decode, each step usually adds only one token, so they won't help.
+
+### Reduce TPOT from Decode
+
+To reduce the TPOT, we can apply a set of techniques on decode as below:
+
+1. [Continuous Batching](#continuous-batching) mainly helps decode because decode runs token by token, and different requests finish at different times. 
+2. [CUDA Graph](/llm/cuda_graph/index.en.md). Each decode step has a fixed computation graph, with only the input token changing. CUDA Graph records all CUDA kernels in an entire decode step as a graph and replays it during inference, eliminating the overhead of Python scheduling and CUDA kernel launches.
+3. 未完待续 https://zhuanlan.zhihu.com/p/2013203040564454281
+
+
 
 
 [^1]: Zixuan Zhou, Xuefei Ning, Ke Hong, Tianyu Fu, Jiaming Xu, Shiyao Li, Yuming Lou, Luning Wang, Zhihang Yuan, Xiuhong Li, Shengen Yan, Guohao Dai, Xiao-Ping Zhang, Huazhong Yang, Yuhan Dong, and Yu Wang. A Survey on Efficient Inference for Large Language Models. arXiv, April 22, 2024. <https://arxiv.org/abs/2404.14294>
