@@ -1,6 +1,6 @@
 ---
 title: "CUDA Matrix-Vector Multiplication"
-date: 2025-11-13
+date: 2025-11-10
 tags: ["llm", "cuda", "optimization"]
 math: true
 ---
@@ -73,7 +73,7 @@ __global__ void gemv_2(float* A, float* x, float* y, int M, int N) {
 
 {{< figure src="./images/gemv_shared_mem.png" align="center" >}}
 
-****
+
 
 
 
