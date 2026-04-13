@@ -9,6 +9,7 @@ math: true
 
 - [Overview](#overview)
 - [Transformer vs. RNN](#transformer-vs-rnn)
+- [Encoder-Only, Decoder-Only, and Encoder-Decoder Tasks](#encoder-only-decoder-only-and-encoder-decoder-tasks)
 - [Attention and Its Math](#attention-and-its-math)
 - [Batch Norm and Layer Norm](#batch-norm-and-layer-norm)
 - [Positional Encoding](#positional-encoding)
