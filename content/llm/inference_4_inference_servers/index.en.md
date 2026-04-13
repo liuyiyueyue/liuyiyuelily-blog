@@ -74,10 +74,18 @@ The process can be described as follows:
 vLLM maximizes per-request efficiency with PagedAttention (memory paging for KV cache), while SGLang maximizes cross-request reuse via prefix sharing (radix tree KV cache).
 In practice: SGLang wins on prefix-heavy workloads (chat/RAG), while vLLM is more general-purpose and production-ready; both are otherwise converging in performance.
 
-**Other Inference Servers**
 
-Beyond vLLM and SGLang, systems such as **Fireworks AI** and **NVIDIA Dynamo** also target high-throughput LLM serving. They focus on the same core problems: request scheduling, KV-cache management, batching, and multi-GPU execution. The main differences are in system design, optimization priorities, and how tightly they integrate with production infrastructure.
+### From Triton to Dynamo
+
+Nvidia **Triton** Inference Server is a production framework for serving machine learning and deep learning models through HTTP/REST and gRPC. Instead of building your own model service with something like Flask, you can let Triton handle model loading, batching, and request scheduling. It was originally called TensorRT Inference Server, but later expanded to support many backends rather than only TensorRT. Because the server is decoupled from the backend, it can serve TensorRT, ONNX Runtime, PyTorch, TensorFlow, Python, and custom backends under one framework. Triton runs on CPU, single-GPU, and multi-GPU systems, so it fits many deployment setups. Beyond basic serving, its key features include dynamic batching, concurrent model execution, model repository management, ensemble pipelines, and metrics and health endpoints. [^3]
+
+Nvidia **Dynamo** is the next generation of inference servers than Triton. It supports several backends: TensorRT-LLM, vLLM, and SGLang. One of its main advantages is PD disaggregation, which separates different stages of inference work so the system can schedule them more efficiently. It also uses a prefix-aware router, which sends each request to a worker whose prefix cache is more likely to be useful. This helps improve cache reuse and reduces redundant computation. Another important feature is KV cache offloading, which makes memory usage more flexible under heavy serving load. For KV cache transfer, Dynamo uses NIXL, a high-speed communication library that can automatically choose between NVLink and RDMA depending on the hardware path. [^4] [^5]
+
+Its implementation in Rust is also notable, because Rust generally offers better memory management than C++ and better performance characteristics than Python, which fits the broader industry trend toward safer high-performance systems.
 
 
 [^1]: Nano-vLLM <https://github.com/GeeeekExplorer/nano-vllm>
 [^2]: Aleksa Gordic, "Inside vLLM: Anatomy of a High-Throughput LLM Inference System" <https://www.aleksagordic.com/blog/vllm>
+[^3]: Nvidia Triton Inference Server <https://github.com/triton-inference-server>
+[^4]: Nvidia Dynamo <https://github.com/ai-dynamo/dynamo>
+[^5]: Nvidia NIXL <https://github.com/ai-dynamo/nixl?tab=readme-ov-file>
