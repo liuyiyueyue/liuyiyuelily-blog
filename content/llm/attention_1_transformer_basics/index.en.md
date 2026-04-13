@@ -58,6 +58,14 @@ In summary, the difference is not that one understands sequences and the other d
 - **RNN**: passes information forward through recurrent hidden states
 - **Transformer**: aggregates information globally through attention
 
+### Encoder-Only, Decoder-Only, and Encoder-Decoder Tasks
+
+Tasks that take an input sequence and generate a different output sequence usually need **both** encoder and decoder, such as machine translation, summarization, and many sequence-to-sequence generation problems. T5 and BART are encoder-decoder models.
+
+Tasks that only need to **understand** an input sequence usually need only an **encoder**, such as classification, sentiment analysis, and token labeling. BERT is encoder-only model.
+
+Tasks that only need to **generate** the next tokens autoregressively usually need only a **decoder**, such as language modeling, chat, and text completion. GPT, LLaMA, and Mistral are decoder-only models.
+
 
 ### Attention and Its Math
 
