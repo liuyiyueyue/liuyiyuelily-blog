@@ -10,7 +10,7 @@ In vLLM, kernel launch overhead is much lower during decode than during prefill.
 
 Normally, the CPU launches GPU kernels one by one. Each launch only costs a few to a few dozen microseconds, but LLM inference may require dozens or even hundreds of launches per token. Those small costs add up, and the GPU can end up waiting on the CPU.
 
-CUDA Graph reduces that overhead by **capturing a fixed sequence of kernel launches once and replaying it later as a single graph**. Replay is much cheaper than launching every kernel individually, so it can remove most launch overhead.[^1] [^2] [^3]
+CUDA Graph reduces that overhead by **capturing a fixed sequence of kernel launches once and replaying it later as a single graph**. Replay is much cheaper than launching every kernel individually, so it can remove most launch overhead.[^1] [^2] [^3] Fireworks gives a useful systems view here: modern GPUs have become so fast that CPU dispatch overhead can become a bottleneck for deep learning workloads, especially LLM decode, and they report a `2.3x` speedup on one LLaMA v2 7B inference workload with CUDA Graphs.[^4]
 
 {{< figure src="./images/cuda_graph.png" caption="CUDA Graph captures a fixed sequence of GPU work and replays it with much lower launch overhead." align="center" >}}
 
@@ -36,3 +36,4 @@ CUDA Graph requires capture and replay to use the same execution graph with stat
 [^1]: NVIDIA CUDA Graphs documentation, no publication date listed. <https://docs.nvidia.com/dl-cuda-graph/latest/>
 [^2]: NVIDIA Developer Blog, "Getting Started with CUDA Graphs," posted September 5, 2019. <https://developer.nvidia.com/blog/cuda-graphs/>
 [^3]: PyTorch Blog, "Accelerating PyTorch with CUDA Graphs," posted October 26, 2021, updated November 15, 2024. <https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs/>
+[^4]: Fireworks AI Blog, "Speed, Python: Pick Two. How CUDA Graphs Enable Fast Python Code for Deep Learning," published August 29, 2023. <https://fireworks.ai/blog/speed-python-pick-two-how-cuda-graphs-enable-fast-python-code-for-deep-learning>
