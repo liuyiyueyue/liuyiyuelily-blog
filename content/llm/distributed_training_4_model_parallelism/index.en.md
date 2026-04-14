@@ -14,9 +14,7 @@ In practice, model parallelism usually appears in several forms: **tensor parall
 
 ### Tensor Parallelism
 
-**Tensor parallelism (TP)** splits the computation inside one layer across multiple GPUs. 
-
-The classic example is a large matrix multiplication in a transformer block in the **Megatron-LM paper** by Nvidia [^1] [^2]. Megatron shards the weight matrix `W` across GPUs in two methods:
+**Tensor parallelism (TP)** splits the computation inside one layer across multiple GPUs. The classic example is a large matrix multiplication in a transformer block in the **Megatron-LM paper** by Nvidia [^1] [^2]. Megatron shards the weight matrix `W` across GPUs in two methods:
 - **Column parallelism**: split the output dimension, so each GPU computes a subset of output columns.
 - **Row parallelism**: split the input dimension, so each GPU computes a partial result and then sums across GPUs.
 
@@ -71,17 +69,28 @@ The other paper is ColossalAI’s “Sequence Parallelism: Long Sequence Trainin
 
 ### Expert Parallelism
 
-Expert parallelism (EP) is mainly used with **Mixture-of-Experts (MoE)** models. In an MoE layer, a router sends each token to only a small subset of experts rather than activating the full dense feed-forward block [^7]. With EP, different experts are placed on different GPUs:
+**MoE**
 
-- GPU 0 may hold experts 1-3
-- GPU 1 may hold experts 4-6
-- GPU 2 may hold experts 7-9
-- GPU 3 may hold experts 10-12
+**Mixture of Experts** (MoE) is a neural network architecture that replaces one large feed-forward block with multiple specialized subnetworks called **experts**. Different experts learn to handle different kinds of tokens, since different tokens carry different meanings.
 
-During the forward pass, a token may be routed to any expert, so we must send it to the target GPU, run the computation there, and then bring it back. This “cross-GPU transfer plus return to the original GPU” is EP **all-to-all**, and it is the core of expert parallelism: 1) how do we efficiently route input tokens to the devices hosting their selected experts during the all-to-all **Dispatch phase**? 2) And how do we send the expert outputs back to the original devices and aggregate the results during the all-to-all **Combine phase**?
+A **gating** or **routing** network routes each token to the most relevant expert or a small subset of experts. For each token, it assigns a probability to every expert, and we keep only the top-K experts with the highest probabilities. This can improve training effectiveness and increase model capacity without activating the whole model every time. There are topics like load balancing and token buffer, but we won't talk about them here.
+
+Because each token uses only the top-K experts rather than all experts, an MoE layer is sparse. This also lets compute grow sublinearly as the model scales.
+
+**Expert Parallelism**
+
+Expert parallelism (EP) is mainly used with MoE models. In an MoE layer, a router sends each token to only a small subset of experts rather than activating the full dense feed-forward block [^7]. With EP, different experts are placed on different GPUs:
+
+- GPU 0 and 1 hold experts 1-2
+- GPU 2 and 3 hold experts 3-4
+
+{{< figure src="./images/expert_parallel.png" caption="Expert parallelism." align="center" width="70%" >}}
+
+During the forward pass, a token may be routed to any expert, so we must send it to the target GPU, run the computation there, and then bring it back. This process of “cross-GPU transfer plus return to the original GPU” is **EP all-to-all**, and it is the core of expert parallelism: 
+1. how do we efficiently route input tokens to the devices hosting their selected experts during the all-to-all **Dispatch phase**? 
+2. how do we send the expert outputs back to the original devices and aggregate the results during the all-to-all **Combine phase**?
 
 {{< figure src="./images/all-to-all_expert_parallel.png" caption="All-to-all dispatch and combine. Each block represents one token." align="center" >}}
-
 
 **GShard**
 
