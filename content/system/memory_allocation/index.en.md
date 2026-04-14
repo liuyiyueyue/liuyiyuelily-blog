@@ -36,8 +36,9 @@ The CUDA driver maintains a global GPU memory pool by default. When memory is fr
 ### PyTorch Memory Pool
 
 One should not rely on calling `cudaMalloc` and `cudaFree` for every allocation. `cudaMalloc` is slow and synchronous, and `cudaFree` may trigger a device-wide synchronization.
-PyTorch has the `CUDACachingAllocator`, which is its GPU memory allocator (memory pool) that caches and reuses CUDA memory blocks instead of calling `cudaMalloc`/`cudaFree` for every tensor. [^2] [^3]
+PyTorch has the `CUDACachingAllocator`, which is its GPU memory allocator (memory pool) that caches and reuses CUDA memory blocks instead of calling `cudaMalloc`/`cudaFree` for every tensor. [^2] [^3] [^4]
 
 [^1]: NVIDIA. CUDA Runtime API, Stream Ordered Memory Allocator. <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html>
 [^2]: PyTorch Dev Discuss. FSDP + CUDACachingAllocator: An Outsider Newb Perspective. <https://dev-discuss.pytorch.org/t/fsdp-cudacachingallocator-an-outsider-newb-perspective/1486>
 [^3]: Zach DeVito. A guide to PyTorch's CUDA Caching Allocator. <https://zdevito.github.io/2022/08/04/cuda-caching-allocator.html>
+[^4]: PyTorch Memory Management. <https://docs.pytorch.org/docs/stable/notes/cuda.html#memory-management>
