@@ -92,6 +92,12 @@ During the forward pass, a token may be routed to any expert, so we must send it
 
 {{< figure src="./images/all-to-all_expert_parallel.png" caption="All-to-all dispatch and combine. Each block represents one token." align="center" >}}
 
+**Communication Overhead**
+
+Let the local token tensor have shape `[b, s, h]`. In the MoE routing step it is common to reshape them to `[b * s, h]`, so each row in `[b * s, h]` is one token. After routing, each token is duplicated across its selected experts, so the routed tensor has shape `[b * s * top-k, h]`. If tokens are evenly distributed, each EP rank sends and receives about
+`b * s * top-k * (total_ep_ranks - 1) / total_ep_ranks`
+tokens during one all-to-all exchange. The factor `(total_ep_ranks - 1) / total_ep_ranks` is the probability that a routed token needs to go to another GPU, so in practice the communication volume is on the order of `b * s * top-k`. With half-precision activations, the communication cost per phase is roughly `2 * b * s * top-k * h` bytes. Since EP has both a dispatch phase and a combine phase, the total communication is about `4 * b * s * top-k * h` bytes [^16].
+
 **GShard**
 
 The GShard paper consists of two parts: one talks about the APIs ("GShard is a module composed of a set of lightweight annotation APIs and an extension to the XLA compiler."); the other discusses MoE. We focus on the second part here. GShard was the first work to extend the MoE idea to Transformers. Specifically, it replaced every other FFN layer in the Transformer encoder and decoder with a position-wise MoE layer, using a Top-2 gating network throughout [^7].
@@ -149,3 +155,5 @@ There are two common modes:
 [^12]: Mesh-TensorFlow: Deep Learning for Supercomputers. arXiv, November 5, 2018. <https://arxiv.org/abs/1811.02084>
 [^13]: DeepEP README, "Undefined-behavior PTX usage." GitHub. <https://github.com/deepseek-ai/DeepEP/tree/main?tab=readme-ov-file#undefined-behavior-ptx-usage>
 [^14]: NVIDIA, "Parallel Thread Execution ISA." CUDA Toolkit Documentation. <https://docs.nvidia.com/cuda/archive/13.0.0/hopper-tuning-guide/parallel-thread-execution/index.html>. NVIDIA, "PTX and SASS Assembly Debugging." Nsight Visual Studio Edition User Guide. <https://docs.nvidia.com/nsight-visual-studio-edition/5.2/Content/PTX_SASS_Assembly_Debugging.htm>
+[^15]: xffxff, "MoE 训练到底是开 TP 还是 EP？" Zhihu. <https://zhuanlan.zhihu.com/p/13997146226>
+[^16]: MegaScale-MoE: Large-Scale Communication-Efficient Training of Mixture-of-Experts Models in Production. arXiv, May 16, 2025. <https://arxiv.org/abs/2505.11432>
