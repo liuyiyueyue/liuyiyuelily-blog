@@ -106,8 +106,8 @@ $$
 {{< /rawhtml >}}
 
 Parameters:
+- $n$ is the number of query tokens, $m$ is the number of key/value tokens, $d_k$ is the query/key feature dimension, and $d_v$ is the value dimension.
 - $Q \in \mathbb{R}^{n \times d_k}$ is the query matrix, $K \in \mathbb{R}^{m \times d_k}$ is the key matrix, and $V \in \mathbb{R}^{m \times d_v}$ is the value matrix. In self-attention, $m = n$.
-- $n$ is the number of query tokens, $m$ is the number of key/value tokens, and $d_k$ is the query/key feature dimension.
 
 Breaking down the equation:
 - The term $QK^\top \in \mathbb{R}^{n \times m}$ is the inner product (cosine) and measures **similarity** between tokens.
@@ -128,9 +128,20 @@ So we calculated the attetion using two matrix multiplications. This makes paral
 
 **Multi-Head Attention (MHA)**
 
-Multi-head attention means using several attention heads in parallel. Each head can learn a different type of relation, such as syntax, local dependency, or long-range dependency. This is loosely similar to how different CNN channels can capture different patterns.
+Multi-head attention runs several attention heads in parallel. Instead of computing a single attention pattern, the model computes multiple attention patterns at the same time. Different heads can learn different relationships, such as local context, long-range dependencies, or syntactic structure.
 
 ![Scaled Dot-Product Attention. Multi-Head Attention](images/scaled_dot-product_attention_and_MHA.png)
+
+Conceptually, each head has its own query, key, and value projections. In implementation, however, we usually do not build separate linear layers for every head. Instead, we use one large projection/matrix for `Q`, one for `K`, and one for `V`, then reshape the result into multiple heads. In other words, the projected features are *logically* partitioned by head, even though they are stored in one tensor. This lets all heads be computed with a small number of large matrix operations rather than many small ones, which is much more efficient.
+
+If the embedding size is `d_model` and the number of heads is `h`, then each head typically uses:
+
+$$
+d_k = d_{model} / h
+$$
+
+You can learn more about the dimensions of each matrix in this blog post.[^8]
+
 
 Here is the Pytorch code for a simple MHA block:
 
@@ -552,3 +563,4 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
 [^5]: Mehreen Saeed. A Gentle Introduction to Positional Encoding in Transformer Models, Part 1. Machine Learning Mastery, January 6, 2023. <https://machinelearningmastery.com/a-gentle-introduction-to-positional-encoding-in-transformer-models-part-1/>
 [^6]: M Javadnejadi. “Transformer is All You Need”. AI Advances, April 30, 2024. <https://ai.gopubby.com/transformer-is-all-you-need-fbb1d1e4d9b0>
 [^7]: RethinkFun/DeepLearning chapter15 <https://github.com/RethinkFun/DeepLearning/blob/master/chapter15/transformer.py>
+[^8]: Ketan Doshi. Transformers Explained Visually, Part 3: Multi-Head Attention Deep Dive. Towards Data Science. <https://towardsdatascience.com/transformers-explained-visually-part-3-multi-head-attention-deep-dive-1c1ff1024853/>
