@@ -60,7 +60,7 @@ An `AllReduce` operation reduces values across all ranks and returns the same re
 
 {{< figure src="./images/all-reduce-composition.png" align="center" >}}
 
-In FSDP, 
+In FSDP, see [Distributed Training: ZeRO and FSDP](/llm/distributed_training_3_zero_fsdp/) for a concrete use of all-reduce-related collectives such as `all_gather` and `reduce_scatter`.
 
 {{< figure src="./images/fsdp_all_reduce.png" caption="FSDP All Reduce." align="center" >}}
 

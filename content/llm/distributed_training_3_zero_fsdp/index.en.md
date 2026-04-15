@@ -5,6 +5,8 @@ tags: ["llm", "distributed-training", "zero", "fsdp"]
 math: true
 ---
 
+Conventional data parallelism replicates the full model state on every GPU, so memory does not decrease as the cluster scales out. ZeRO and FSDP address this by sharding optimizer states, gradients, and parameters across devices, allowing much larger models to be trained under the same memory budget.
+
 ### ZeRo [^1]
 In conventional data-parallel training, every machine still has to hold a full copy of the model state in memory, and that memory cost does not shrink as data parallelism scales out. As a result, memory often becomes the main bottleneck in data-parallel training. 
 
@@ -20,7 +22,7 @@ ZeRO-DP has three main optimization stages: $P_{OS}$ refers to ZeRO-1, $P_{OS+g}
 
 {{< figure src="./images/zero-dp.png" caption="ZeRO-DP optimization stages." align="center" >}}
 
-**Memory Reduction**
+**Memory Usage Reduction**
 
 In mixed-precision training, the model parameters are stored in `float16`, the model gradients are stored in `float16`, and the Adam states are stored in `float32`, including the master copy of the model parameters, the momentum, and the variance. Let the total number of model parameters be $\Phi$. Then the total memory required is
 
@@ -52,17 +54,17 @@ $$
 
 Compared with conventional data parallelism, the per-GPU memory usage can therefore be reduced by up to $4\times$, $8\times$, and $N_d\times$ for ZeRO-1, ZeRO-2, and ZeRO-3, respectively.
 
-<!--
-**Communication Overhead**
+**Communication Volumn/ Data Movements**
 
-TODO: 
-"7.2 ZeRO-DP Communication Volume" + "Communication Analysis of ZeRO-DP"
-As such, instead of an all-reduce, ZeRO only
-requires a scatter-reduce operation on the gradients, incurring communication volume of Ψ.
+In conventional data parallel training, gradients are synchronized across all data-parallel ranks at the end of backward propagation before the optimizer update. This is typically implemented with **all-reduce**, which can be viewed as a **reduce-scatter** followed by an **all-gather**. Let $Ψ$ denote the total number of gradient elements in the model. Under ring all-reduce, the per-rank communication is approximately $2Ψ$ elements.
 
-DeepSpeed之ZeRO系列：将显存优化进行到底 - basicv8vc的文章 - 知乎
-https://zhuanlan.zhihu.com/p/513571706
--->
+ZeRO-2 keeps this communication volume roughly unchanged. Instead of all-reducing the full gradient tensor, it performs a **reduce-scatter** on gradients so that each rank receives only the reduced shard it owns, then applies the optimizer update locally, and finally runs an **all-gather** on the updated parameters. The total communication is therefore still about $Ψ + Ψ = 2Ψ$ elements per step.
+
+ZeRO-3 adds extra communication because parameters are also sharded. It still needs about $Ψ$ elements for gradient **reduce-scatter** and about $Ψ$ elements for parameter **all-gather** after the optimizer step, but it must also gather model parameter shards for computation via an additional **all-gather** because no rank stores the full parameter set locally. Under this simplified accounting, the total communication becomes about $3Ψ$ elements per step.
+
+See [Collective Operations](/llm/collective_operations/) for the detailed communication-volume breakdown and calculation of each operation.
+
+The conclusion is that ZeRO-1 and ZeRO-2 have the same communication volume as conventional data parallelism, while ZeRO-3 increases communication volume.
 
 
 ### FSDP [^2] [^3]
