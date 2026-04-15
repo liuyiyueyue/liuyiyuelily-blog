@@ -18,7 +18,7 @@ In practice, model parallelism usually appears in several forms: **tensor parall
 - **Column parallelism**: split the output dimension, so each GPU computes a subset of output columns.
 - **Row parallelism**: split the input dimension, so each GPU computes a partial result and then sums across GPUs.
 
-TP reduces peak GPU memory usage and speeds up computation, but the communication costs between GPUs are significant.
+TP has good memory efficiency, reduces peak GPU memory usage, and speeds up computation. Each worker only stores the tensor shard it is responsible for, so the memory overhead per worker decreases linearly as the number of workers increases. However, TP has relatively high communication overhead between GPUs, because the forward or backward computation of each layer requires collective communication, such as All-Gather or All-Reduce.
 
 ### Pipeline Parallelism
 
@@ -26,10 +26,13 @@ TP reduces peak GPU memory usage and speeds up computation, but the communicatio
 
 For example, in a 12-layer transformer:
 
-- GPU 0 may hold layers 1-3
-- GPU 1 may hold layers 4-6
-- GPU 2 may hold layers 7-9
-- GPU 3 may hold layers 10-12
+- GPU 0 may hold layers 1-4
+- GPU 1 may hold layers 5-9
+- GPU 2 may hold layers 10-12
+
+After a batch arrives, the first stage begins the forward pass, then sends its output activations to the next stage, which continues the computation, and this process repeats until the last stage finishes. Backward propagation then starts from the last stage, and gradients are passed back stage by stage until the first stage completes its computation.
+
+PP has good memory efficiency: each worker only stores the parameters of the stage it is responsible for, so the memory overhead per worker decreases linearly as the number of workers increases. In addition, PP has relatively low communication overhead, because it only needs to communicate activations and gradients between adjacent stages. The main challenge of PP is balancing the computation across stages so that idle time is minimized, as explained next.
 
 A naive implementation of pipeline parallelism leaves many **pipeline bubble**, i.e. some devices sit idle at the beginning and end of each step while waiting for other stages. Hence, research on pipeline parallelism mainly focuses on:
 1. reducing pipeline bubbles to improve overall system throughput
