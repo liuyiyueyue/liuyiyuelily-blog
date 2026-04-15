@@ -1,5 +1,5 @@
 ---
-title: "Distributed Training: ZeRO and FSDP"
+title: "Distributed Training: Data Parallelism (ZeRO and FSDP)"
 date: 2025-12-15
 tags: ["llm", "distributed-training", "zero", "fsdp"]
 math: true

@@ -1,5 +1,5 @@
 ---
-title: "Distributed Training: Parallelism Strategies"
+title: "Distributed Training: Parallelism Strategies Overview"
 date: 2025-12-01
 tags: ["llm", "distributed-training", "parallelism"]
 ---

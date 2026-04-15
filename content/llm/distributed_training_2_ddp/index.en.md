@@ -1,5 +1,5 @@
 ---
-title: "Distributed Training: PyTorch DP vs DDP"
+title: "Distributed Training: Data Parallelism (PyTorch DP vs DDP)"
 date: 2025-12-07
 tags: ["llm", "pytorch", "distributed-training"]
 ---

@@ -1,5 +1,5 @@
 ---
-title: "Distributed Training: Model Parallelism"
+title: "Distributed Training: Model Parallelism (TP, PP, SP, EP, 3D)"
 date: 2025-12-17
 tags: ["llm", "distributed-training", "model-parallelism"]
 ---
