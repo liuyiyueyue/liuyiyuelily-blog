@@ -4,6 +4,17 @@ date: 2025-12-17
 tags: ["llm", "distributed-training", "model-parallelism"]
 ---
 
+**Contents**
+
+- [Why Model Parallelism?](#why-model-parallelism)
+- [Tensor Parallelism](#tensor-parallelism)
+- [Pipeline Parallelism](#pipeline-parallelism)
+- [Sequence Parallelism](#sequence-parallelism)
+- [Expert Parallelism](#expert-parallelism)
+- [Automatic Parallelism](#automatic-parallelism)
+- [Comparing the Strategies](#comparing-the-strategies)
+- [Hybrid Parallelism](#hybrid-parallelism)
+
 ### Why Model Parallelism?
 
 Data parallelism works well when the full model can still fit on each GPU. But once a model becomes too large, simply replicating it across devices is no longer practical.
@@ -148,6 +159,25 @@ There are two common modes:
 | **Pipeline Parallelism** | Across layers | Fits deep models | Pipeline bubbles and stage balancing |
 | **Sequence Parallelism** | Across sequence length | Lowers activation memory | Extra coordination with TP |
 | **Expert Parallelism** | Across experts | Scales parameter count efficiently | Token routing and `all_to_all` |
+
+
+### Hybrid Parallelism
+
+**3D Parallelism: TP+PP+DP**
+
+The [Pipeline Parallelism](#pipeline-parallelism), [Tensor Parallelism](#tensor-parallelism), and [Data Parallel](/llm/distributed_training_3_zero_fsdp/) posts summarize the main memory and communication tradeoffs. We choose the parallelism dimensions in the order of their practical constraints. As a recap, TP is the most constrained, because its high communication cost usually prevents it from scaling efficiently across nodes. PP comes next, because its theoretical upper bound is limited by the number of layers in the model, and in practice each stage also cannot be made too small without hurting efficiency. DP is the least constrained, because in principle it can scale much further, and is mainly limited by batch size and communication efficiency at very large scale.
+
+Now let's run through an example. Suppose the model has 512B parameters.
+
+First, we apply PP, by partitioning the model into 4 stages, so each stage contains 128B parameters. Assign each stage to one 4-GPU node. We call it PP=4 or 4-way PP.
+
+Next, we apply TP. Within each node, the stage is split into 4 shards, each holding 32B parameters. We call it TP=4 or 4-way TP.
+
+Finally, we apply DP with one identical copies of the same 4-way PP + 4-way TP layout. Denote the first replica as $G_0^0, G_1^0, ..., G_15^0$, and the second replica as $G_0^1, G_1^1, ..., G_15^1$. Because DP can only be applied across GPUs that hold the same parameter shard, $G_0^0$ and $G_0^1$ form one DP group, $G_1^0$ and $G_1^1$ form another, and so on. In total, this creates 16 DP groups. Within each DP group, one can further apply ZeRO to improve memory efficiency.
+
+Overall, for our 4-way TP + 4-way PP + 2-way DP case, we need 4 × 4 × 2 = 32 GPUs.
+
+![3D parallelism: 4-way TP + 4-way PP + 2-way DP](images/3d_parallelism.png)
 
 
 [^1]: Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism. arXiv, September 17, 2019. <https://arxiv.org/abs/1909.08053>
