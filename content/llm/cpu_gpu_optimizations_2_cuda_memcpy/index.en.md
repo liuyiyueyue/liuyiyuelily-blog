@@ -147,8 +147,9 @@ References:
 The previous post briefly mentions the cost introduced by pinning memory. In this section, we dive deep 
 into it. 
 
-Pinning memory is not free: `cudaMallocHost`/`cudaHostAlloc`/`cudaHostRegister` must lock physical pages and update page tables, which can take noticeable time compared with ordinary `malloc`.
-This setup cost is usually paid on the CPU and can dominate workloads that transfer small buffers or frequently allocate/free pinned regions. Excessive pinned memory also reduces paging flexibility for the OS, which may hurt overall system responsiveness under memory pressure.
+Pinning memory is not free: `cudaMallocHost`/`cudaHostAlloc`/`cudaHostRegister` via kernel pinning APIs must lock physical pages and update page tables immediately, which can take noticeable time compared with ordinary `malloc`. Pageable memory is fast to allocate because the operating system can manage it flexibly, including delaying physical backing (First Touch Policy) and allowing pages to be moved or swapped. Pinned memory is slower to allocate because the OS must immediately lock those pages in physical RAM so they cannot be paged out, which adds extra setup and bookkeeping overhead.
+
+This pinning overhead is usually paid on the CPU and can dominate workloads that transfer small buffers or frequently allocate/free pinned regions. Excessive pinned memory also reduces paging flexibility for the OS, which may hurt overall system responsiveness under memory pressure.
 
 In practice, pin once and reuse buffers across many transfers so the higher one-time pinning cost is amortized by faster H2D/D2H bandwidth.
 
