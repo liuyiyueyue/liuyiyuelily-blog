@@ -30,7 +30,7 @@ Machine learning usually starts with a model, a loss function, gradients, and an
 | Term | Meaning | Math | PyTorch Keyword |
 | --- | --- | --- | --- |
 | **Model** | Function mapping $x \to \hat{y}$ | $f_\theta(x)$ | `nn.Module` |
-| **Parameters** | What the model learns | $\theta = \{w, b\}$ | `model.parameters()` |
+| **Parameters** | What the model learns. Include weight and bias | $\theta = \{w, b\}$ | `model.parameters()` |
 | **Loss function** | Error measure | $L(y, \hat{y}) = \frac{1}{N}\sum_i (\hat{y}_i - y_i)^2$ | `nn.MSELoss`, `nn.CrossEntropyLoss` |
 | **Gradient** | Derivative of the loss with respect to parameters | $\nabla_\theta L$ | `loss.backward()` |
 | **Optimizer** | Updates parameters | $\theta \leftarrow \theta - \eta\nabla_\theta L$ | `torch.optim.SGD` |
