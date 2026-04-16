@@ -6,6 +6,18 @@ tags: ["llm", "distributed-training", "nccl"]
 
 Collective operations are the basic communication primitives used in distributed training. They define how tensors are reduced, replicated, partitioned, and exchanged across ranks. Below are some of the most common collective operations in distributed training [^1].
 
+### Table of Contents
+
+- [P2P](#p2p)
+- [Reduce](#reduce)
+- [Broadcast](#broadcast)
+- [Scatter](#scatter)
+- [Gather](#gather)
+- [AllGather](#allgather)
+- [ReduceScatter](#reducescatter)
+- [AllReduce](#allreduce)
+- [PyTorch Examples](#pytorch-examples)
+
 ### P2P
 
 A `P2P` operation is point-to-point communication between exactly two ranks, typically implemented as `send` and `recv`. If one rank sends a tensor of size `n` bytes to another rank, the communication volume is `n` bytes.
