@@ -16,7 +16,7 @@ It lays the kernel‑level foundation for pinned memory, which later posts build
 
 - **Normal memory** in an OS can be paged out to disk by the virtual memory manager. This is fine for general workloads but not for I/O devices that need **direct and fast access**.
 - **Pinned memory** is “locked” into physical RAM so the OS guarantees it will always stay resident.
-- This is crucial for **DMA (Direct Memory Access)**: when a device (like a GPU, NIC, or storage controller) directly reads/writes memory, the physical addresses must not change during the transfer.
+- This is crucial for **DMA (Direct Memory Access)**: when a device (like a GPU, NIC, or storage controller) directly reads/writes memory, the physical addresses must be contiguous and not change during the transfer.
 - In GPU computing (CUDA, etc.), pinned memory allows **faster host–device transfers** because the GPU can DMA directly without needing a temporary bounce buffer (**zero-copy**), e.g., CUDA `cudaMallocHost` and `cudaHostAlloc`.
 
 
