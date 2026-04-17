@@ -319,6 +319,27 @@ where:
 - $\nabla_\theta L(\theta)$ is the gradient (i.e. derivative of the loss function)
 - $\eta$ is the learning rate
 
+**Adam and AdamW**
+
+A compact way to write Adam and AdamW are:
+
+$$
+\text{Adam: }w_{t+1} = w_t - \eta \cdot \text{AdamUpdate}(g_t)
+$$
+
+$$
+\text{AdamW: }w_{t+1} = w_t - \eta \cdot \text{AdamUpdate}(g_t) - \eta \lambda w_t
+$$
+
+where:
+- $g_t$ is gradient.
+- $\text{AdamUpdate}(g_t)$ is typically $\frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \varepsilon}$, where 
+  - $m_t = \beta_1 m_{t-1} + (1-\beta_1)g_t$ is the first-moment estimate, and $v_t = \beta_2 v_{t-1} + (1-\beta_2)g_t^2$ is the second-moment estimate. $m_t$, $v_t$, and $t$ are called **optimizer states** in Adam or AdamW.
+  - $\hat{m}_t = \frac{m_t}{1-\beta_1^t}$ is the bias-corrected first-moment estimate, and $\hat{v}_t = \frac{v_t}{1-\beta_2^t}$ is the bias-corrected second-moment estimate
+- $\lambda w_t$ is the extra weight decay term, which is the key difference between AdamW and Adam.
+
+Adam and AdamW are preferred because they combine stable optimization, adaptive per-parameter updates, and good practical performance on large neural networks; AdamW is usually favored because it also handles weight decay more cleanly. Nowadays, AdamW is the mainstream optimizer for modern LLM training. 
+
 **Gradient-Based Methods**
 
 | Algorithm | Update Rule | Description |
