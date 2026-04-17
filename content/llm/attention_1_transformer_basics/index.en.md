@@ -87,8 +87,6 @@ In self-attention, `Q`, `K`, and `V` all come from the same input sequence:
 
 So self-attention means that each token compares itself with all tokens in the same sequence and then gathers the most relevant information.
 
-
-
 **Masked Attention**
 
 In masked self-attention, token `t` is not allowed to see tokens after `t`. This is required in autoregressive language models, where prediction at position `t` must not use future tokens.
@@ -132,7 +130,7 @@ Multi-head attention runs several attention heads in parallel. Instead of comput
 
 ![Scaled Dot-Product Attention. Multi-Head Attention](images/scaled_dot-product_attention_and_MHA.png)
 
-Conceptually, each head has its own query, key, and value projections. In implementation, however, we usually do not build separate linear layers for every head. Instead, we use one large projection/matrix for `Q`, one for `K`, and one for `V`, then reshape the result into multiple heads. In other words, the projected features are *logically* partitioned by head, even though they are stored in one tensor. This lets all heads be computed with a small number of large matrix operations rather than many small ones, which is much more efficient.
+Conceptually, each head has its own query, key, and value projections. In implementation, however, we usually do not build separate linear layers for every head. Instead, we use one large projection/matrix for `Q`, one for `K`, and one for `V`, then reshape the result into multiple heads. In other words, the projected features are *logically* partitioned by head, even though they are stored in one tensor. This lets all heads be computed with a small number of large matrix operations rather than many small ones, which is much more efficient. 我觉得可以粗略理解为：把投影后的 hidden dimension 分成 h 块，每一块对应一个 attention head。
 
 If the embedding size is `d_model` and the number of heads is `h`, then each head typically uses:
 
@@ -215,18 +213,21 @@ class MultiHeadAttentionBlock(nn.Module):
         value = self.w_v(v)  # (batch, seq_len, dim) --> (batch, seq_len, dim)
 
         # Split dim into n_head smaller subspaces, one for each head.
-		# (batch, seq_len, dim) --> (batch, seq_len, n_head, d_k) --> (batch, n_head, seq_len, d_k)
+        # (batch, seq_len, dim) --> (batch, seq_len, n_head, d_k) --> (batch, n_head, seq_len, d_k)
         query = query.view(query.shape[0], query.shape[1], self.n_head, self.d_k).transpose(1, 2)
         key = key.view(key.shape[0], key.shape[1], self.n_head, self.d_k).transpose(1, 2)
         value = value.view(value.shape[0], value.shape[1], self.n_head, self.d_k).transpose(1, 2)
 
         # Apply scaled dot-product attention independently in each head.
+        # Q K V are all (batch, n_head, seq_len, d_k) --> (batch, n_head, seq_len, d_k)
         x, self.attention_scores = MultiHeadAttentionBlock.attention(query, key, value, mask)
 
         # Concatenate all head outputs back into the full model dimension.
+        # (batch, n_head, seq_len, d_k) --> (batch, seq_len, n_head, d_k) --> (batch, seq_len, dim)
         x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.n_head * self.d_k)
 
         # Final linear projection output after merging the heads.
+        # (batch, seq_len, dim) --> (batch, seq_len, dim)
         return self.w_o(x)
 ```
 
