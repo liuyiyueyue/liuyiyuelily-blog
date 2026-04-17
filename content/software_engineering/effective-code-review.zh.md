@@ -4,7 +4,7 @@ date: 2025-12-25
 tags: ["software-engineering", "code-review", "productivity"]
 ## Temporarily disabled on UI
 draft: true
-_build:
+build:
   list: false
   publishResources: false
   render: false

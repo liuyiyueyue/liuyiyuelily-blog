@@ -49,57 +49,56 @@ Machine learning usually starts with a model, a loss function, gradients, and an
     - update weights.
 4. Repeat the above over many epochs.
 
-Typical dataset split:
-  - training set: 70-80%
-  - validation set: 10-15%
-  - test set: 10-15%
+Typical dataset split: training set: 70-80%; validation set: 10-15%; test set: 10-15%.
 
 A sample PyTorch code:
 
 ```python
-# Set the model to training mode. Enables behaviors like dropout and batch normalization updates.
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+train_data = torch.randn(256, 1, 28, 28)
+train_labels = torch.randint(0, 10, (256,))
+train_loader = DataLoader(TensorDataset(train_data, train_labels), batch_size=32, shuffle=True)
+
+model = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(28 * 28, 128),
+    nn.ReLU(),  # Activation function
+    nn.Linear(128, 10),
+).to(device)
+
+loss_fn = nn.CrossEntropyLoss() # loss function
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+num_epochs = 3
+
 model.train()
 
 for epoch in range(num_epochs):
-    # Loop over the dataset multiple times (one full pass = one epoch)
-
-    # Accumulate total loss for this epoch (for logging / averaging)
     total_loss = 0
 
     for images, labels in train_loader:
-        # Iterate over mini-batches from the dataset
-
-        # Move data to target device (CPU / GPU / accelerator)
         images, labels = images.to(device), labels.to(device)
 
-        # Forward pass:
-        # Input → model → predictions (logits)
-        # Also builds computation graph for autograd
+        # Forward pass: 
+        #               compute predictions; activations happen inside model(...)
         outputs = model(images)
+        #               compute loss and compare predictions with labels
+        loss = loss_fn(outputs, labels)
 
-        # Compute scalar loss (e.g., cross-entropy)
-        # This connects outputs to ground truth and becomes the root for backprop
-        loss = criterion(outputs, labels)
-
-        # Clear previous gradients stored in model parameters
-        # PyTorch accumulates gradients by default, so must reset each step
+        # Backward pass: 
+        #               clear old gradients, then compute new gradients
         optimizer.zero_grad()
-
-        # Backward pass:
-        # Compute gradients via backpropagation
-        # Autograd traverses computation graph and computes d(loss)/d(param)
-        # Results stored in param.grad
         loss.backward()
 
-        # Update model parameters using computed gradients
+        # Optimizer to update weights
         optimizer.step()
-        
-        # Convert loss tensor to Python scalar and accumulate
-        total_loss += loss.item()
-        
-    # Compute average loss across all batches in this epoch
-    avg_loss = total_loss / len(train_loader)
 
+        total_loss += loss.item()
+
+    avg_loss = total_loss / len(train_loader)
     print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
 ```
 
@@ -116,22 +115,21 @@ A typical inference iteration looks like this:
 A sample PyTorch code:
 
 ```python
-# Set model to evaluation mode (disable dropout, fix batchnorm behavior)
+# (Reuse the trained model and device from the training example above)
+test_data = torch.randn(64, 1, 28, 28)
+test_loader = DataLoader(TensorDataset(test_data), batch_size=32)
+
+# Inference: switch to evaluation mode
 model.eval()
 
-# Disable gradient computation to save memory and speed up inference
+# Inference: no backward pass or weight updates
 with torch.no_grad():
-
-    # Iterate over batches of input data (no labels needed for pure inference)
-    for images in test_loader:
-
-        # Move input data to the same device as the model (CPU/GPU)
+    for (images,) in test_loader:
         images = images.to(device)
 
-        # Run forward pass to get model outputs (logits)
+        # Forward pass: compute predictions
         outputs = model(images)
-
-        # Convert logits to predicted class indices
+        # Postprocess: convert logits to predicted classes
         predictions = torch.argmax(outputs, dim=1)
 ```
 
@@ -306,7 +304,7 @@ Common variants:
 - **stratified k-fold** for classification
 - **leave-one-out**
 
-### Loss and Optimization
+### Loss and Optimizater
 
 All optimizers aim to minimize a loss function by adjusting parameters:
 
