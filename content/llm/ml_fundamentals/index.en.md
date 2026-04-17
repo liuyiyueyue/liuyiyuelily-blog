@@ -17,7 +17,7 @@ This post is a compact set of notes on the math and statistics foundations behin
 - [Evaluation Metrics](#evaluation-metrics)
 - [Overfitting and Regularization](#overfitting-and-regularization)
 - [Bias, Variance, and Cross-Validation](#bias-variance-and-cross-validation)
-- [Loss and Optimization](#loss-and-optimization)
+- [Loss and Optimizater](#loss-and-optimizer)
 - [Activation Functions](#activation-functions)
 - [Normalization](#normalization)
 - [Probability and Statistics for Machine Learning](#probability-and-statistics-for-machine-learning)
