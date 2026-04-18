@@ -17,7 +17,7 @@ This post is a compact set of notes on the math and statistics foundations behin
 - [Evaluation Metrics](#evaluation-metrics)
 - [Overfitting and Regularization](#overfitting-and-regularization)
 - [Bias, Variance, and Cross-Validation](#bias-variance-and-cross-validation)
-- [Loss and Optimizer](#loss-and-optimizer)
+- [Optimizer](#optimizer)
 - [Activation Functions](#activation-functions)
 - [Normalization](#normalization)
 - [Probability and Statistics for Machine Learning](#probability-and-statistics-for-machine-learning)
@@ -304,7 +304,7 @@ Common variants:
 - **stratified k-fold** for classification
 - **leave-one-out**
 
-### Loss and Optimizer
+### Optimizer
 
 All optimizers aim to minimize a loss function by adjusting parameters:
 
