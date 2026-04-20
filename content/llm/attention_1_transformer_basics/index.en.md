@@ -483,6 +483,8 @@ class LayerNorm(nn.Module):
 
 ###  Complete PyTorch Code
 
+In Transformer code, several dimension names often refer to the same thing. If a tensor has shape `(batch, seq_len, dim)`, then `dim` is the size of each token vector, and people may call it the `model dimension`, `hidden dimension`, `feature dimension`, `embedding dimension`, or `d_model`.
+
 ```python
 class EncoderBlock(nn.Module):
     """
