@@ -8,9 +8,11 @@ tags: ["llm", "pytorch"]
 
 PyTorch represents data with `Tensor`s, its n-dimensional array type. A tensor has a shape, a data type, and storage placed on a device such as the CPU or GPU. Many tensor operations create new values, while simple view operations such as `reshape` or `split` can reuse the same underlying storage without copying data.
 
-`torch.arange(0, 8, 2, dtype=torch.float)` creates a 1D tensor with values `[0., 2., 4., 6.]`, starting at `0`, stopping before `8`, and stepping by `2`.
+A simple way to create a tensor is with `torch.arange()`, which generates evenly spaced values over a range. For example, `torch.arange(0, 8, 2, dtype=torch.float)` creates a 1D tensor with values `[0., 2., 4., 6.]`, starting at `0`, stopping before `8`, and stepping by `2`.
 
-`unsqueeze` adds a dimension of size `1` to a tensor, while `squeeze` removes a dimension of size `1`. For example, if `x.shape == (8, 512)`, then `x.unsqueeze(0)` gives `(1, 8, 512)`, and if `y.shape == (1, 8, 512)`, then `y.squeeze(0)` gives `(8, 512)`. These operations are often used to make tensor shapes line up for batching or broadcasting.
+`unsqueeze()` adds a dimension of size `1` to a tensor, while `squeeze()` removes a dimension of size `1`. For example, if `x.shape == (8, 512)`, then `x.unsqueeze(0)` gives `(1, 8, 512)`, and if `y.shape == (1, 8, 512)`, then `y.squeeze(0)` gives `(8, 512)`. These operations are often used to make tensor shapes line up for batching or broadcasting.
+
+`tensor.view()` reshapes a tensor without changing its underlying data, as long as the new shape is compatible with the number of elements. For example, if `x = torch.arange(12)`, then `x.view(3, 4)` reshapes it from shape `(12,)` to `(3, 4)`. This is commonly used to reorganize tensor dimensions before operations such as matrix multiplication or attention.
 
 **`Module`**
 
