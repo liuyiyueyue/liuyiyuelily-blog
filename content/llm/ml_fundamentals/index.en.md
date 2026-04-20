@@ -257,29 +257,27 @@ Common ways to address overfitting include:
 
 **Regularization**
 
-Regularization adds a penalty to discourage overly complex models.
+Regularization adds a penalty to discourage overly complex models. Common regularization methods include L1, L2 (or weight decay), and dropout.
 
-For L2 regularization:
+**L2** regularization, or **Ridge** regularization:
 
 $$
 L_{\text{total}} = L_{\text{data}} + \lambda \|w\|_2^2
 $$
 
-This is also called **Ridge** regularization.
-
-For L1 regularization:
+**L1** regularization, or **Lasso** regularization:
 
 $$
 L_{\text{total}} = L_{\text{data}} + \lambda \|w\|_1
 $$
-
-This is also called **Lasso** regularization.
 
 Useful intuition:
 
 - Both L1 and L2 help reduce overfitting.
 - L1 tends to produce **sparse** solutions, so it can be useful for feature selection.
 - L2 is smoother and easier to optimize with gradient-based methods.
+
+**Dropout** is another regularization technique that randomly sets some activations to zero during training. This reduces co-adaptation between neurons and makes the model rely less on any single path through the network. During inference, dropout is turned off, and the full network is used.
 
 ### Bias, Variance, and Cross-Validation
 
@@ -472,3 +470,9 @@ Note
 - **Batch size**: The number of samples (or input sequences) processed together in one forward/backward pass before updating the model parameters. Larger batch sizes usually improve hardware utilization, but they also require more memory and can change optimization behavior.
 
 - **Auto-regressive**: A modeling setup where the model predicts the next token using only the previous tokens. During generation, it produces output one token at a time and feeds each new token back in to predict the next one.
+
+- **Token**: One individual item from that vocabulary, usually represented by an integer ID.
+
+- **Vocab size**: How many distinct tokens the tokenizer knows about.
+
+- **Embedding**: The dense vector looked up for a token ID so the model can work with it numerically.
