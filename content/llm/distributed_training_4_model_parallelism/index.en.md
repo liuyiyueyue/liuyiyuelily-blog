@@ -2,6 +2,7 @@
 title: "Distributed Training: Model Parallelism (TP, PP, SP, EP, 3D)"
 date: 2025-12-17
 tags: ["llm", "distributed-training", "model-parallelism"]
+math: true
 ---
 
 **Contents**
@@ -25,15 +26,56 @@ In practice, model parallelism usually appears in several forms: **tensor parall
 
 ### Tensor Parallelism
 
-**Tensor parallelism (TP)** splits the computation inside one layer across multiple GPUs. The classic example is a large matrix multiplication in a transformer block in the **Megatron-LM paper** by Nvidia [^1] [^2]. Megatron shards the weight matrix `W` across GPUs in two methods:
+Tensor parallelism (TP) splits the computation inside one layer across multiple GPUs. TP has good memory efficiency, reduces peak GPU memory usage, and speeds up computation. Each worker only stores the tensor shard it is responsible for, so the memory overhead per worker decreases linearly as the number of workers increases. However, TP has relatively high communication overhead between GPUs, because the forward or backward computation of each layer requires collective communication, such as All-Gather or All-Reduce.
+
+**Megatron-LM** [^1] [^2]
+
+Megatron shards the weight matrix across GPUs in two methods:
 - **Column parallelism**: split the output dimension, so each GPU computes a subset of output columns.
 - **Row parallelism**: split the input dimension, so each GPU computes a partial result and then sums across GPUs.
 
-TP has good memory efficiency, reduces peak GPU memory usage, and speeds up computation. Each worker only stores the tensor shard it is responsible for, so the memory overhead per worker decreases linearly as the number of workers increases. However, TP has relatively high communication overhead between GPUs, because the forward or backward computation of each layer requires collective communication, such as All-Gather or All-Reduce.
+Now let's walk through an example using transformer encoder, which consists of one self-attention block and on MLP block. We define $b$ as the batch size, $s$ as the sequence length, $h$ as the hidden dimension, $n$ as the number of heads, and $p$ as the number of partitions. Tensor shapes are denoted using square brackets; for example, $[b, s, h]$ represents the standard input to a Transformer encoder.
+
+Self-attention uses a column-parallel QKV projection and a row-parallel output projection:
+
+| Step | Without Megatron | With Megatron |
+| --- | --- | --- |
+| QKV projection (input * weight) | $[b, s, h] \times [h, h] = [b, s, h]$ | $[b, s, h] \times [h, h/p] = [b, s, h/p]$ (column parallel)|
+| Split into heads | For each of Q, K, and V, we have $n$ tensors of shape $[b, s, h/n]$ | For each of Q, K, and V, we have $n/p$ tensors of shape $[b, s, h/n]$ |
+| Attention scores | $n$ computations of $QK^T$, each producing $[b, s, s]$ | $n/p$ computations of $QK^T$, each producing $[b, s, s]$ |
+| Apply values | $n$ outputs of shape $[b, s, h/n]$ | $n/p$ outputs of shape $[b, s, h/n]$ |
+| Concatenate heads | $[b, s, h]$ | Local result is $[b, s, h/p]$ |
+| Output projection | $[b, s, h] \times [h, h] = [b, s, h]$ | $[b, s, h/p] \times [h/p, h] = [b, s, h]$ (row parallel) |
+| Communication | None | All-reduce across $p$ GPUs |
+
+The learnable parameters in self-attention are:
+- QKV projection: $[h, h] \to [h, h/p]$ under tensor parallelism, which is **column parallelism**
+- Output projection: $[h, h] \to [h/p, h]$, which is **row parallelism**
+
+The MLP uses a column-parallel up projection and a row-parallel down projection:
+
+| Step | Without Megatron | With Megatron |
+| --- | --- | --- |
+| Up projection | $[b, s, h] \times [h, 4h] = [b, s, 4h]$ | $[b, s, h] \times [h, 4h/p] = [b, s, 4h/p]$ (column parallel) |
+| Down projection | $[b, s, 4h] \times [4h, h] = [b, s, h]$ | $[b, s, 4h/p] \times [4h/p, h] = [b, s, h]$ (row parallel) |
+| Communication | None | All-reduce across $p$ GPUs |
+
+The learnable parameters in the MLP are:
+- Up projection: $[h, 4h] \to [h, 4h/p]$, which is **column parallelism**
+- Down projection: $[4h, h] \to [4h/p, h]$, which is **row parallelism**
+
+The shardings on the matrices are valid given the split of matmul is valid:
+
+```
+           |B1|
+|A1, A2| x |B2| = A1 x B1 + A2 x B2
+```
+
+![Megatron-1](images//megatron-lm-1.png)
 
 ### Pipeline Parallelism
 
-**Pipeline parallelism (PP)** splits the model by layers, partitioning several consecutive layers into one group, called a **stage**. Different stages are then assigned to different devices, so each GPU only computes a portion of the network’s layers.
+Pipeline parallelism (PP) splits the model by layers, partitioning several consecutive layers into one group, called a **stage**. Different stages are then assigned to different devices, so each GPU only computes a portion of the network’s layers.
 
 For example, in a 12-layer transformer:
 
@@ -111,6 +153,13 @@ During the forward pass, a token may be routed to any expert, so we must send it
 Let the local token tensor have shape `[b, s, h]`. In the MoE routing step it is common to reshape them to `[b * s, h]`, so each row in `[b * s, h]` is one token. After routing, each token is duplicated across its selected experts, so the routed tensor has shape `[b * s * top-k, h]`. If tokens are evenly distributed, each EP rank sends and receives about
 `b * s * top-k * (total_ep_ranks - 1) / total_ep_ranks`
 tokens during one all-to-all exchange. The factor `(total_ep_ranks - 1) / total_ep_ranks` is the probability that a routed token needs to go to another GPU, so in practice the communication volume is on the order of `b * s * top-k`. With half-precision activations, the communication cost per phase is roughly `2 * b * s * top-k * h` bytes. Since EP has both a dispatch phase and a combine phase, the total communication is about `4 * b * s * top-k * h` bytes [^16].
+
+<!-- 
+**Compute Efficiency**
+**Memory Usage**
+MoE 训练到底是开 TP 还是 EP？ - xffxff的文章 - 知乎
+https://zhuanlan.zhihu.com/p/13997146226 
+-->
 
 **GShard**
 
