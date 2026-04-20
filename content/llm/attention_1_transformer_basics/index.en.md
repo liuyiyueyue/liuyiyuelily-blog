@@ -8,14 +8,15 @@ math: true
 ### Table of Contents
 
 - [Overview](#overview)
-- [Transformer vs. RNN](#transformer-vs-rnn)
 - [Encoder-Only, Decoder-Only, and Encoder-Decoder Tasks](#encoder-only-decoder-only-and-encoder-decoder-tasks)
-- [Attention and Its Math](#attention-and-its-math)
-- [Batch Norm and Layer Norm](#batch-norm-and-layer-norm)
+- [Transformer vs. RNN](#transformer-vs-rnn)
+- [Input Processing and Embeddings](#input-processing-and-embeddings)
 - [Positional Encoding](#positional-encoding)
+- [Attention and Its Math*](#attention-and-its-math)
 - [MLP or FFN](#mlp-or-ffn)
 - [Residual Connection](#residual-connection)
-- [Complete Code](#complete-code)
+- [Batch Norm and Layer Norm](#batch-norm-and-layer-norm)
+- [Complete PyTorch Code](#complete-pytorch-code)
 
 ### Overview
 
@@ -35,6 +36,15 @@ Below is the architecture of the standard Transformer [^2]:
 ![Transformer architecture](images/transformer.png)
 
 In practice, modern large language models often use decoder-only variants, but the original encoder-decoder design is still the standard starting point for understanding the architecture.
+
+
+### Encoder-Only, Decoder-Only, and Encoder-Decoder Tasks
+
+Tasks that take an input sequence and generate a different output sequence usually need **both** encoder and decoder, such as machine translation, summarization, and many sequence-to-sequence generation problems. T5 and BART are encoder-decoder models.
+
+Tasks that only need to **understand** an input sequence usually need only an **encoder**, such as classification, sentiment analysis, and token labeling. BERT is encoder-only model.
+
+Tasks that only need to **generate** the next tokens autoregressively usually need only a **decoder**, such as language modeling, chat, and text completion. GPT, LLaMA, and Mistral are decoder-only models.
 
 ### Transformer vs. RNN
 
@@ -59,14 +69,82 @@ In summary, the difference is not that one understands sequences and the other d
 - **RNN**: passes information forward through recurrent hidden states
 - **Transformer**: aggregates information globally through attention
 
-### Encoder-Only, Decoder-Only, and Encoder-Decoder Tasks
+### Input Processing and Embeddings
 
-Tasks that take an input sequence and generate a different output sequence usually need **both** encoder and decoder, such as machine translation, summarization, and many sequence-to-sequence generation problems. T5 and BART are encoder-decoder models.
+Before tokens are turned into embeddings, the text is first converted into token ids by a tokenizer such as SentencePiece. In many Transformer training pipelines, the tokenizer also defines a few **special tokens** that control how sequences are batched and decoded:
 
-Tasks that only need to **understand** an input sequence usually need only an **encoder**, such as classification, sentiment analysis, and token labeling. BERT is encoder-only model.
+- `PAD_ID`: the padding token id. It is used to extend shorter sequences to the same length within a batch, and attention masks usually hide these positions.
+- `UNK_ID`: the unknown token id. It represents text that cannot be mapped cleanly to the tokenizer vocabulary.
+- `BOS_ID`: the beginning-of-sequence token id. It marks where a sequence starts and is commonly added before the actual sentence.
+- `EOS_ID`: the end-of-sequence token id. It marks where a sequence ends and tells the model when generation should stop.
 
-Tasks that only need to **generate** the next tokens autoregressively usually need only a **decoder**, such as language modeling, chat, and text completion. GPT, LLaMA, and Mistral are decoder-only models.
+For example, a tokenized sentence may look like:
 
+```text
+[BOS, token_1, token_2, token_3, EOS, PAD, PAD]
+```
+
+After that, the embedding layer maps each token id to a dense vector, and positional encoding is added so the model can use token order information.
+
+### Positional Encoding
+
+Positional encoding provides the model with information about the positions of words in a sequence. Since the Transformer's self-attention mechanism does not naturally account for the order of elements in the sequence, positional encoding solves this by adding position information to each element's representation. In the original Transformer paper, positional encodings are defined using **alternating sine and cosine functions**:
+
+$$
+\operatorname{PE}(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
+$$
+
+$$
+\operatorname{PE}(pos, 2i+1) = \cos\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
+$$
+
+, where $pos$ is token position in the sequence and $i$ is the index of the sine-cosine pair inside the embedding dimension. Here is an illustration of how the positional encoding matrix is calculated [^5]:
+
+{{< figure src="images/pos_encoding.png" alt="Positional Encoding" width="650" align="center" >}}
+
+To apply the positional encoding to input embeddings:
+
+$$
+Y = X + PE
+$$
+
+Here is the Pytorch code for a simple positional encoding block:
+
+```python
+class PositionalEncoding(nn.Module):
+    """
+    Sinusoidal positional encoding for Transformer inputs.
+    """
+
+    def __init__(self, dim: int, seq_len: int) -> None:
+        """
+        Initializes the positional encoding table.
+
+        Args:
+            dim (int): Dimension of the input embeddings.
+            seq_len (int): Maximum sequence length supported by the encoding.
+        """
+        super().__init__()
+        position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)  # (seq_len, 1)
+        div_term = torch.pow(10000.0, -torch.arange(0, dim, 2, dtype=torch.float) / dim)  # (dim / 2)
+        pe = torch.zeros(seq_len, dim)  # (seq_len, dim)
+        pe[:, 0::2] = torch.sin(position * div_term)  # sin(position / (10000 ** (2i / dim))
+        pe[:, 1::2] = torch.cos(position * div_term)  # cos(position / (10000 ** (2i / dim))
+        pe = pe.unsqueeze(0)  # (1, seq_len, dim)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        """
+        Adds positional encodings to the input embeddings.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, seq_len, dim).
+
+        Returns:
+            torch.Tensor: Tensor with positional encodings added, with the same shape as input.
+        """
+        return x + (self.pe[:, :x.shape[1], :])  # (batch, seq_len, dim)
+```
 
 ### Attention and Its Math
 
@@ -232,120 +310,6 @@ class MultiHeadAttentionBlock(nn.Module):
 ```
 
 
-### Batch Norm and Layer Norm
-
-Both layer normalization and batch normalization are used to stabilize training, but they normalize over different dimensions.
-
-$$
-\hat{x} = \frac{x - \mu}{\sigma + \epsilon}
-$$
-
-**Batch normalization** computes statistics across the batch. Its behavior depends on the distribution of examples inside the mini-batch. This works well in many vision settings, but it is less suitable for sequence models when sequence lengths vary a lot, token distributions change across positions, or batch statistics become unstable or less meaningful. In the equation above, $\mu$ and $\sigma$ are computed across the batch dimension for each feature channel.
-
-**Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.[^4] In the equation above, $\mu$ and $\sigma$ are computed from the features of one sample/token.
-
-{{< figure src="images/layer_batch_norm.png" alt="layer norm v.s. batch norm" width="500" align="center" >}}
-
-This is why Transformers use layer normalization instead of batch normalization. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
-
-Here is the Pytorch code for a simple layer norm block:
-
-```python
-class LayerNorm(nn.Module):
-    """
-    Layer Normalization.
-
-    Args:
-        dim (int): Dimension of the input tensor.
-        eps (float): Epsilon value for numerical stability. Defaults to 1e-6.
-    """
-
-    def __init__(self, dim: int, eps: float = 10 ** -6) -> None:
-        """
-        Initializes the LayerNorm module.
-
-        Args:
-            dim (int): Dimension of the input tensor.
-            eps (float): Epsilon value for numerical stability.
-        """
-        super().__init__()
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
-
-    def forward(self, x):
-        """
-        Forward pass for LayerNorm.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch, seq_len, hidden_size).
-
-        Returns:
-            torch.Tensor: Normalized tensor with the same shape as input.
-        """
-        mean = x.mean(dim=-1, keepdim=True)
-        std = x.std(dim=-1, keepdim=True)
-        return self.weight * (x - mean) / (std + self.eps)
-```
-
-
-### Positional Encoding
-
-Positional encoding provides the model with information about the positions of words in a sequence. Since the Transformer's self-attention mechanism does not naturally account for the order of elements in the sequence, positional encoding solves this by adding position information to each element's representation. In the original Transformer paper, positional encodings are defined using **alternating sine and cosine functions**:
-
-{{< rawhtml >}}
-$$
-\operatorname{PE}(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
-$$
-{{< /rawhtml >}}
-
-{{< rawhtml >}}
-$$
-\operatorname{PE}(pos, 2i+1) = \cos\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
-$$
-{{< /rawhtml >}}
-
-, where $pos$ is token position in the sequence and $i$ is the index of the sine-cosine pair inside the embedding dimension. Here is an illustration of how the positional encoding matrix is calculated [^5]:
-
-{{< figure src="images/pos_encoding.png" alt="Positional Encoding" width="650" align="center" >}}
-
-Here is the Pytorch code for a simple positional encoding block:
-
-```python
-class PositionalEncoding(nn.Module):
-    """
-    Sinusoidal positional encoding for Transformer inputs.
-    """
-
-    def __init__(self, dim: int, seq_len: int) -> None:
-        """
-        Initializes the positional encoding table.
-
-        Args:
-            dim (int): Dimension of the input embeddings.
-            seq_len (int): Maximum sequence length supported by the encoding.
-        """
-        super().__init__()
-        position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)  # (seq_len, 1)
-        div_term = torch.pow(10000.0, -torch.arange(0, dim, 2, dtype=torch.float) / dim)  # (dim / 2)
-        pe = torch.zeros(seq_len, dim)  # (seq_len, dim)
-        pe[:, 0::2] = torch.sin(position * div_term)  # sin(position / (10000 ** (2i / dim))
-        pe[:, 1::2] = torch.cos(position * div_term)  # cos(position / (10000 ** (2i / dim))
-        pe = pe.unsqueeze(0)  # (1, seq_len, dim)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        """
-        Adds positional encodings to the input embeddings.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch, seq_len, dim).
-
-        Returns:
-            torch.Tensor: Tensor with positional encodings added, with the same shape as input.
-        """
-        return x + (self.pe[:, :x.shape[1], :])  # (batch, seq_len, dim)
-```
-
 ### MLP or FFN
 
 In a Transformer block, attention and the **feed-forward network** (**FFN**, also called the **MLP** block) play different roles.
@@ -400,7 +364,21 @@ class FeedForwardBlock(nn.Module):
 
 ### Residual Connection
 
-Residual connection helps mitigate vanishing gradients and degradation in deep models. The red arrows in the images below are residual connections [^6].
+Deep networks are hard to train. Gradients could vanish or opimization would degrade. Residual connections aim to mitigate vanishing gradients and degradation in deep models. They are like the skip connections, allowing the input flow directly to later layers, and each block only needs to learn a correction to the input, not a full new representation.
+
+A residual connection means the layer does not only output its transformation, but also the learned changes: `output = input + learned_change` or in math notation: $$H(x) = x + F(x)$$
+
+where:
+- `x` is the original input
+- `F(x)` is the change the layer learns
+- `H(x)` is the final output after adding that change back to the input
+
+So instead of asking the layer to learn the whole output from scratch, we ask it to learn only what should be added or adjusted. If the ideal output is almost the same as the input, then learning `F(x) = 0` is much easier than relearning `H(x) = x` from scratch.
+
+The residual connections also make it easier for gradients to pass backward through many layers during training. Without the skip path, the gradient must pass only through the layer’s transformation `F(x)`, which can shrink or become unstable.
+
+
+The encoder block applies one residual connection around attention, and another around the MLP/feed-forward part. The decoder has one extra residual connection because it includes the cross-attention step. The red arrows in the images below are residual connections [^6].
 
 {{< figure src="images/residual_connection.png" alt="Residual connections" width="800" align="center" >}}
 
@@ -408,80 +386,351 @@ Here is the Pytorch code for a simple residual connection block:
 
 ```python
 class ResidualConnection(nn.Module):
+    """Residual wrapper with pre-norm and dropout for Transformer sublayers.
 
-    def __init__(self, features: int) -> None:
+    Attributes:
+        dropout (nn.Dropout): Dropout applied to the sublayer output before adding the residual.
+        norm (LayerNorm): Layer normalization applied before the sublayer.
+    """
+
+    def __init__(self, dim: int, dropout: float) -> None:
+        """
+        Initializes the residual connection block.
+
+        Args:
+            dim (int):  Dimensionality of the input and output.
+            dropout (float): Dropout probability applied to the sublayer output.
+        """
         super().__init__()
-        self.norm = LayerNorm(features)
+        self.dropout = nn.Dropout(dropout)
+        self.norm = LayerNorm(dim)
 
     def forward(self, x, sublayer):
-        return x + sublayer(self.norm(x))
+        """
+        Forward pass for the residual connection.
+        (batch, seq_len, dim) --> norm --> sublayer --> dropout --> residual add
+
+        Args:
+            x (torch.Tensor):    Input tensor of shape (batch, seq_len, dim).
+            sublayer (Callable): Sublayer function or module applied to the normalized input.
+
+        Returns:
+            torch.Tensor: Output tensor with the residual connection applied.
+        """
+        return x + self.dropout(sublayer(self.norm(x)))
 ```
 
-###  PyTorch Code
+### Batch Norm and Layer Norm
+
+Both layer normalization and batch normalization are used to stabilize training, but they normalize over different dimensions.
+
+$$
+\hat{x} = \frac{x - \mu}{\sigma + \epsilon}
+$$
+
+- $\mu$: the mean of the values
+- $\sigma$: the standard deviation of the values
+- $\epsilon$: a small constant added for numerical stability to avoid division by zero.
+
+**Batch normalization** computes statistics across the batch. Its behavior depends on the distribution of examples inside the mini-batch. This works well in many vision settings, but it is less suitable for sequence models when sequence lengths vary a lot, token distributions change across positions, or batch statistics become unstable or less meaningful. In the equation above, $\mu$ and $\sigma$ are computed across the batch dimension for each feature channel.
+
+**Layer normalization** computes statistics within each individual token representation. It does not depend on other examples in the batch, which makes it more stable for variable-length sequence modeling.[^4] In the equation above, $\mu$ and $\sigma$ are computed from the features of one sample/token.
+
+{{< figure src="images/layer_batch_norm.png" alt="layer norm v.s. batch norm" width="500" align="center" >}}
+
+This is why Transformers use layer normalization instead of batch normalization. For language tasks, each token representation should be normalized independently, without relying on the composition of the current mini-batch.
+
+In a **pre-norm** scenario, layer norm is applied at the start of each residual block, before the sublayer computation, e.g. `x + sublayer(self.norm(x))`, where sublayer is either an attention layer or a feed-forward layer.
+
+Here is the Pytorch code for a simple layer norm block:
+
+```python
+class LayerNorm(nn.Module):
+    """
+    Layer Normalization.
+
+    Args:
+        dim (int): Dimension of the input tensor.
+        eps (float): Epsilon value for numerical stability. Defaults to 1e-6.
+    """
+
+    def __init__(self, dim: int, eps: float = 10 ** -6) -> None:
+        """
+        Initializes the LayerNorm module.
+
+        Args:
+            dim (int): Dimension of the input tensor.
+            eps (float): Epsilon value for numerical stability.
+        """
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x):
+        """
+        Forward pass for LayerNorm.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, seq_len, hidden_size).
+
+        Returns:
+            torch.Tensor: Normalized tensor with the same shape as input.
+        """
+        mean = x.mean(dim=-1, keepdim=True)
+        std = x.std(dim=-1, keepdim=True)
+        return self.weight * (x - mean) / (std + self.eps)
+```
+
+###  Complete PyTorch Code
 
 ```python
 class EncoderBlock(nn.Module):
+    """
+    Single Transformer encoder block.
 
-    def __init__(self, features: int, self_attention_block: MultiHeadAttentionBlock,
-                 feed_forward_block: FeedForwardBlock) -> None:
+    Args:
+        dim (int): Feature dimension of each token representation.
+        self_attention_block (MultiHeadAttentionBlock): Self-attention module.
+        feed_forward_block (FeedForwardBlock): Position-wise feed-forward module.
+        dropout (float): Dropout probability used in residual connections.
+    """
+
+    def __init__(self, dim: int, self_attention_block: MultiHeadAttentionBlock,
+                 feed_forward_block: FeedForwardBlock, dropout: float) -> None:
+        """
+        Initializes the encoder block submodules.
+
+        Args:
+            dim (int): Feature dimension of each token representation.
+            self_attention_block (MultiHeadAttentionBlock): Self-attention module.
+            feed_forward_block (FeedForwardBlock): Position-wise feed-forward module.
+            dropout (float): Dropout probability used in residual connections.
+        """
         super().__init__()
         self.self_attention_block = self_attention_block
         self.feed_forward_block = feed_forward_block
-        self.residual_connections = nn.ModuleList([ResidualConnection(features) for _ in range(2)])
+        # One residual path wraps self-attention, and the other wraps the feed-forward block.
+        self.residual_connections = nn.ModuleList([ResidualConnection(dim, dropout) for _ in range(2)])
 
     def forward(self, x, src_mask):
-        # First residual connection, bypassing the multi-head attention block
-        x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, src_mask))
+        """
+        Forward pass for one encoder block.
 
-        # Second residual connection, bypassing the feed-forward block
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, seq_len, dim).
+            src_mask (torch.Tensor | None): Optional source attention mask that prevents attending to padded source tokens.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, seq_len, dim).
+        """
+        # First residual connection applies self-attention with shared Q, K, and V.
+        # src_mask keeps encoder tokens from attending to source-side padding.
+        x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, src_mask))
+        # Second residual connection applies the position-wise feed-forward block.
         x = self.residual_connections[1](x, self.feed_forward_block)
         return x
 
-class Encoder(nn.Module):
 
-    def __init__(self, features: int, layers: nn.ModuleList) -> None:
+class Encoder(nn.Module):
+    """
+    Stacked Transformer encoder.
+
+    Args:
+        dim (int):              Feature dimension of each token representation.
+        layers (nn.ModuleList): Encoder blocks applied in sequence.
+    """
+
+    def __init__(self, dim: int, layers: nn.ModuleList) -> None:
+        """
+        Initializes the encoder stack and final normalization layer.
+
+        Args:
+            dim (int):              Feature dimension of each token representation.
+            layers (nn.ModuleList): Encoder blocks applied in sequence.
+        """
         super().__init__()
-        self.layers = layers # The 6 EncoderBlocks passed in
-        self.norm = LayerNormalization(features)
+        self.layers = layers
+        self.norm = LayerNorm(dim)
 
     def forward(self, x, mask):
+        """
+        Forward pass for the full encoder stack.
+
+        Args:
+            x (torch.Tensor):         Input tensor of shape (batch, seq_len, dim).
+            mask (torch.Tensor | None): Optional source attention mask that
+                prevents attending to padded source tokens.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, seq_len, dim).
+        """
+        # Apply each encoder block in sequence.
         for layer in self.layers:
             x = layer(x, mask)
+        # Apply the final layer normalization after the full encoder stack.
         return self.norm(x)
 
-class DecoderBlock(nn.Module):
 
-    def __init__(self, features: int, self_attention_block: MultiHeadAttentionBlock,
-                 cross_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock) -> None:
+class DecoderBlock(nn.Module):
+    """
+    Single Transformer decoder block.
+
+    Args:
+        dim (int):                                  Feature dimension of each token representation.
+        self_attention_block (MultiHeadAttentionBlock):  Masked self-attention module.
+        cross_attention_block (MultiHeadAttentionBlock): Cross-attention module.
+        feed_forward_block (FeedForwardBlock):           Position-wise feed-forward module.
+        dropout (float):                                 Dropout probability used in residual connections.
+    """
+
+    def __init__(self, dim: int, self_attention_block: MultiHeadAttentionBlock,
+                 cross_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock,
+                 dropout: float) -> None:
+        """
+        Initializes the decoder block submodules.
+
+        Args:
+            dim (int):                                  Feature dimension of each token representation.
+            self_attention_block (MultiHeadAttentionBlock):  Masked self-attention module.
+            cross_attention_block (MultiHeadAttentionBlock): Cross-attention module.
+            feed_forward_block (FeedForwardBlock):           Position-wise feed-forward module.
+            dropout (float):                                 Dropout probability used in residual connections.
+        """
         super().__init__()
         self.self_attention_block = self_attention_block
         self.cross_attention_block = cross_attention_block
         self.feed_forward_block = feed_forward_block
-        self.residual_connections = nn.ModuleList([ResidualConnection(features) for _ in range(3)])
+        # Residual paths wrap masked self-attention, cross-attention, and feed-forward sublayers.
+        self.residual_connections = nn.ModuleList([ResidualConnection(dim, dropout) for _ in range(3)])
 
     def forward(self, x, encoder_output, src_mask, tgt_mask):
+        """
+        Forward pass for one decoder block.
+
+        Args:
+            x (torch.Tensor):               Input tensor of shape (batch, tgt_len, dim).
+            encoder_output (torch.Tensor):  Encoder output of shape (batch, src_len, dim).
+            src_mask (torch.Tensor | None): Source attention mask that prevents decoder cross-attention from reading padded encoder positions.
+            tgt_mask (torch.Tensor | None): Target attention mask.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, tgt_len, dim).
+        """
+        # First residual connection applies masked self-attention within the decoder sequence.
         x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, tgt_mask))
-        # In cross-attention, Q comes from the Decoder, while K and V come from the Encoder output
+        # Second residual connection attends to encoder outputs using decoder states as queries.
+        # src_mask ensures decoder queries ignore padding positions in encoder_output.
         x = self.residual_connections[1](x, lambda x: self.cross_attention_block(x, encoder_output, encoder_output, src_mask))
+        # Third residual connection applies the position-wise feed-forward block.
         x = self.residual_connections[2](x, self.feed_forward_block)
         return x
 
-class Decoder(nn.Module):
 
-    def __init__(self, features: int, layers: nn.ModuleList) -> None:
+class Decoder(nn.Module):
+    """
+    Stacked Transformer decoder.
+
+    Args:
+        dim (int):              Feature dimension of each token representation.
+        layers (nn.ModuleList): Decoder blocks applied in sequence.
+    """
+
+    def __init__(self, dim: int, layers: nn.ModuleList) -> None:
+        """
+        Initializes the decoder stack and final normalization layer.
+
+        Args:
+            dim (int):              Feature dimension of each token representation.
+            layers (nn.ModuleList): Decoder blocks applied in sequence.
+        """
         super().__init__()
         self.layers = layers
-        self.norm = LayerNormalization(features)
+        self.norm = LayerNorm(dim)
 
     def forward(self, x, encoder_output, src_mask, tgt_mask):
+        """
+        Forward pass for the full decoder stack.
+
+        Args:
+            x (torch.Tensor):               Input tensor of shape (batch, tgt_len, dim).
+            encoder_output (torch.Tensor):  Encoder output of shape (batch, src_len, dim).
+            src_mask (torch.Tensor | None): Source attention mask that prevents decoder cross-attention from reading padded encoder positions.
+            tgt_mask (torch.Tensor | None): Target attention mask.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, tgt_len, dim).
+        """
+        # Apply each decoder block in sequence.
         for layer in self.layers:
             x = layer(x, encoder_output, src_mask, tgt_mask)
+        # Apply the final layer normalization after the full decoder stack.
         return self.norm(x)
 
+
+class ProjectionLayer(nn.Module):
+    """
+    Output projection layer from hidden states to vocabulary logits.
+    ProjectionLayer is the very last step, after the decoder has already produced hidden states.
+
+    Args:
+        d_model (int):    Hidden feature dimension of each token representation.
+        vocab_size (int): Size of the output vocabulary.
+    """
+
+    def __init__(self, d_model, vocab_size) -> None:
+        """
+        Initializes the final linear projection layer.
+
+        Args:
+            d_model (int):    Hidden feature dimension of each token representation.
+            vocab_size (int): Size of the output vocabulary.
+        """
+        super().__init__()
+        self.proj = nn.Linear(d_model, vocab_size)
+
+    def forward(self, x):
+        """
+        Projects hidden states into vocabulary logits.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, seq_len, d_model).
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, seq_len, vocab_size).
+        """
+        # Map each token representation to vocabulary-sized logits.
+        # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
+        return self.proj(x)
+
+
 class Transformer(nn.Module):
+    """
+    Full encoder-decoder Transformer model.
+
+    Args:
+        encoder (Encoder):                     Transformer encoder stack.
+        decoder (Decoder):                     Transformer decoder stack.
+        src_embed (InputEmbeddings):           Source token embedding layer.
+        tgt_embed (InputEmbeddings):           Target token embedding layer.
+        src_pos (PositionalEncoding):          Source positional encoding layer.
+        tgt_pos (PositionalEncoding):          Target positional encoding layer.
+        projection_layer (ProjectionLayer):    Output projection to vocabulary logits.
+    """
 
     def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: InputEmbeddings, tgt_embed: InputEmbeddings,
                  src_pos: PositionalEncoding, tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer) -> None:
+        """
+        Initializes the Transformer encoder, decoder, embeddings, and output projection.
+
+        Args:
+            encoder (Encoder):                     Transformer encoder stack.
+            decoder (Decoder):                     Transformer decoder stack.
+            src_embed (InputEmbeddings):           Source token embedding layer.
+            tgt_embed (InputEmbeddings):           Target token embedding layer.
+            src_pos (PositionalEncoding):          Source positional encoding layer.
+            tgt_pos (PositionalEncoding):          Target positional encoding layer.
+            projection_layer (ProjectionLayer):    Output projection to vocabulary logits.
+        """
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -492,33 +741,86 @@ class Transformer(nn.Module):
         self.projection_layer = projection_layer
 
     def encode(self, src, src_mask):
-        # (batch, seq_len, d_model)
+        """
+        Encodes a source sequence into contextualized hidden states.
+
+        Args:
+            src (torch.Tensor):              Source token ids of shape (batch, src_len).
+            src_mask (torch.Tensor | None):  Source attention mask that prevents encoder attention from using padded source tokens.
+
+        Returns:
+            torch.Tensor: Encoder output of shape (batch, src_len, d_model).
+        """
+        # Embed source tokens and add positional information before the encoder stack.
+        # (batch, src_len) --> (batch, src_len, d_model)
         src = self.src_embed(src)
         src = self.src_pos(src)
+        # Pass src_mask through the encoder so every self-attention layer ignores source padding.
         return self.encoder(src, src_mask)
 
     def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
-        # (batch, seq_len, d_model)
+        """
+        Decodes a target sequence using encoder outputs as context.
+
+        Args:
+            encoder_output (torch.Tensor):   Encoder output of shape (batch, src_len, d_model).
+            src_mask (torch.Tensor | None):  Source attention mask that prevents decoder cross-attention from using padded encoder positions.
+            tgt (torch.Tensor):              Target token ids of shape (batch, tgt_len).
+            tgt_mask (torch.Tensor | None):  Target attention mask.
+
+        Returns:
+            torch.Tensor: Decoder output of shape (batch, tgt_len, d_model).
+        """
+        # Embed target tokens and add positional information before the decoder stack.
+        # (batch, tgt_len) --> (batch, tgt_len, d_model)
         tgt = self.tgt_embed(tgt)
         tgt = self.tgt_pos(tgt)
+        # Pass src_mask into decoder cross-attention so target tokens only read real source tokens.
         return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
 
     def project(self, x):
-        # (batch, seq_len, vocab_size)
+        """
+        Projects decoder hidden states into vocabulary logits.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, seq_len, d_model).
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, seq_len, vocab_size).
+        """
+        # Apply the final vocabulary projection to each decoder position.
+        # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         return self.projection_layer(x)
 
 
 def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int, tgt_seq_len: int, d_model: int = 512,
                       N: int = 6, h: int = 8, dropout: float = 0.1, d_ff: int = 2048) -> Transformer:
-    # Create embedding layers
+    """
+    Builds a full encoder-decoder Transformer model.
+
+    Args:
+        src_vocab_size (int): Source vocabulary size.
+        tgt_vocab_size (int): Target vocabulary size.
+        src_seq_len (int):    Maximum source sequence length.
+        tgt_seq_len (int):    Maximum target sequence length.
+        d_model (int):        Model dimension for token representations.
+        N (int):              Number of encoder and decoder blocks.
+        h (int):              Number of attention heads per multi-head attention block.
+        dropout (float):      Dropout probability used throughout the model.
+        d_ff (int):           Hidden dimension of the feed-forward blocks.
+
+    Returns:
+        Transformer: Fully constructed Transformer model with Xavier-initialized weights.
+    """
+    # Create source and target token embedding layers.
     src_embed = InputEmbeddings(d_model, src_vocab_size)
     tgt_embed = InputEmbeddings(d_model, tgt_vocab_size)
 
-    # Create positional encoding layers
+    # Create positional encoding layers for source and target sequences.
     src_pos = PositionalEncoding(d_model, src_seq_len, dropout)
     tgt_pos = PositionalEncoding(d_model, tgt_seq_len, dropout)
 
-    # Create encoder blocks
+    # Build the encoder stack from N identical encoder blocks.
     encoder_blocks = []
     for _ in range(N):
         encoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
@@ -526,7 +828,7 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
         encoder_block = EncoderBlock(d_model, encoder_self_attention_block, feed_forward_block, dropout)
         encoder_blocks.append(encoder_block)
 
-    # Create decoder blocks
+    # Build the decoder stack from N identical decoder blocks.
     decoder_blocks = []
     for _ in range(N):
         decoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
@@ -536,24 +838,22 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
                                      feed_forward_block, dropout)
         decoder_blocks.append(decoder_block)
 
-    # Create the encoder and decoder
+    # Wrap the block lists into the full encoder and decoder modules.
     encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
     decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
 
-    # Create the output projection layer
+    # Create the output projection from decoder hidden states to target vocabulary logits.
     projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
 
-    # Create the Transformer
+    # Assemble the full Transformer model.
     transformer = Transformer(encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
 
-    # Initialize parameters
+    # Initialize weight matrices with Xavier uniform initialization for stable training.
     for p in transformer.parameters():
-        if p.dim() > 1:
+        if p.dim() > 1: # it is a weight matrix, not a bias vector
             nn.init.xavier_uniform_(p)
 
     return transformer
-
-    
 ```
 
 
