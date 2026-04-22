@@ -352,28 +352,70 @@ The gate lets the model control which information should pass through the MLP. I
 
 ```python
 class SwiGLU(nn.Module):
-    def __init__(self, d_model, hidden_dim):
+    """SwiGLU activation used in modern Transformer MLP blocks.
+
+    Attributes:
+        linear_gate (nn.Module): Linear layer that produces the gate values.
+        linear_value (nn.Module): Linear layer that produces the value branch.
+    """
+    def __init__(self, dim: int, hidden_dim: int) -> None:
+        """
+        Initializes the SwiGLU activation.
+
+        Args:
+            dim (int): Input dimensionality.
+            hidden_dim (int): Hidden layer dimensionality.
+        """
         super().__init__()
-        self.Wa = nn.Linear(d_model, hidden_dim)
-        self.Wb = nn.Linear(d_model, hidden_dim)
+        self.linear_gate = nn.Linear(dim, hidden_dim)
+        self.linear_value = nn.Linear(dim, hidden_dim)
 
     def forward(self, x):
-        return self.Wa(x) * F.silu(self.Wb(x))
+        """
+        Forward pass for the SwiGLU activation.
+        (batch, seq_len, dim) --> (batch, seq_len, hidden_dim)
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Gated hidden representation.
+        """
+        return F.silu(self.linear_gate(x)) * self.linear_value(x)
 
 
-class FFN_SwiGLU(nn.Module):
-    def __init__(self, d_model, mlp_ratio=3.0):  # common default in modern LLMs
+class FeedForwardSwiGLUBlock(nn.Module):
+    """Two-layer feed-forward block with SwiGLU gating.
+
+    Attributes:
+        swiglu (nn.Module): Gated activation block.
+        linear_out (nn.Module): Output projection back to model dimension.
+    """
+    def __init__(self, dim: int, hidden_dim: int) -> None:
+        """
+        Initializes the SwiGLU-based FFN layer.
+
+        Args:
+            dim (int): Input and output dimensionality.
+            hidden_dim (int): Hidden layer dimensionality.
+        """
         super().__init__()
-        hidden_dim = int(mlp_ratio * d_model)
-
-        self.fc = SwiGLU(d_model, hidden_dim)
-        self.proj = nn.Linear(hidden_dim, d_model)
+        self.swiglu = SwiGLU(dim, hidden_dim)
+        self.linear_out = nn.Linear(hidden_dim, dim)
 
     def forward(self, x):
-        return self.proj(self.fc(x))
+        """
+        Forward pass for the SwiGLU-based FFN layer.
+        (batch, seq_len, dim) --> (batch, seq_len, hidden_dim) --> (batch, seq_len, dim)
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor after MLP computation.
+        """
+        return self.linear_out(self.swiglu(x))
 ```
-
-<!--LorA-->
 
 [^1]: Jianlin Su, Yu Lu, Shengfeng Pan, Ahmed Murtadha, Bo Wen, and Yunfeng Liu. RoFormer: Enhanced Transformer with Rotary Position Embedding. arXiv, April 20, 2021. <https://arxiv.org/abs/2104.09864>
 [^2]: Shreyash Shukla. RoPE (Rotary Positional Embeddings). <https://shreyashkar-ml.github.io/posts/rope/>
