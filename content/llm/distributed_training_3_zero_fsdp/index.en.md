@@ -5,7 +5,7 @@ tags: ["llm", "distributed-training", "zero", "fsdp"]
 math: true
 ---
 
-Conventional data parallelism replicates the full model state on every GPU, so memory does not decrease as the cluster scales out. ZeRO and FSDP address this by sharding optimizer states, gradients, and parameters across devices, allowing much larger models to be trained under the same memory budget.
+Conventional data parallelism such as DDP replicates the full model state on every GPU, so memory does not decrease as the cluster scales out. ZeRO and FSDP address this by sharding optimizer states, gradients, and parameters across devices, allowing much larger models to be trained under the same memory budget.
 
 这篇文章的重点有两个：
   1. 哪些 tensor 可以长期以分片形式保存，哪些 tensor 分片后需要在 forward、backward 和 optimizer step 中进行通信，什么时候进行通信，以及为什么这样的分片和通信方式不会破坏训练语义。
@@ -102,7 +102,7 @@ The conclusion is that ZeRO-1 and ZeRO-2 have the same communication volume as c
 ### FSDP [^2] [^3]
 Facebook introduced **FSDP (Fully Sharded Data Parallel)** as PyTorch’s counterpart to Microsoft’s **ZeRO** in DeepSpeed. FSDP can be viewed as an optimized version of **DDP** within PyTorch. It is still a form of data parallelism, but unlike DDP, FSDP uses **parameter sharding**. In other words, model parameters are partitioned across GPUs, whereas in DDP each GPU keeps a full copy of the parameters. This allows FSDP to achieve better training efficiency, both in terms of speed and GPU memory usage.
 
-{{< figure src="./images/fsdp-graph-2.png" caption="FSDP execution flow." align="center" >}}
+{{< figure src="./images/fsdp.png" caption="FSDP execution flow." align="center" >}}
 
 **Constructor**
 
@@ -140,15 +140,49 @@ Facebook introduced **FSDP (Fully Sharded Data Parallel)** as PyTorch’s counte
 The full runnable example is in [`code/basic_fsdp1.py`](./code/basic_fsdp1.py). It initializes distributed execution, wraps the model with `FSDP`, and then runs a standard forward-backward-optimizer loop. The optional `auto_wrap_policy` demonstrates how larger submodules can be split into separate FSDP units instead of wrapping the entire model as one flat unit.
 
 
-#### FSDP 2
+#### FSDP 2 [^4]
 
-略 ;-) 写累了
-TODO：
-    - FSDP2的前向三流并行 - Eric的文章 - 知乎
-https://zhuanlan.zhihu.com/p/1971313139116126428
-    - Pytorch FSDP2解析 - 入机的文章 - 知乎
-https://zhuanlan.zhihu.com/p/1934025640065073496
+**fully_shard()**
+
+FSDP2 replaces the wrapper-style `FSDP(...)` API in FSDP1 with the composable `fully_shard()` API. In practice, `fully_shard()` is typically applied bottom-up, often together with a device mesh:
+
+```python
+from torch.distributed.fsdp import fully_shard, FSDPModule
+model = Transformer()
+
+# apply fully_shard() on each layer first, then the root model
+for layer in model.layers:
+    fully_shard(layer)
+fully_shard(model)
+```
+
+**DTensor**
+
+After `fully_shard(model)`, model parameters are represented as `DTensor`s, which encode sharded parameter layouts directly. In contrast, FSDP1 is mainly wrapper-based and historically relied on internal abstractions such as `FlatParameter` to manage sharded parameters. In other words, FSDP1 mostly manages sharding through the wrapper, while FSDP2 makes sharding part of the parameter representation itself.
+
+**Streams**
+
+Within all-gather, copy-in refers to copying and packing scattered sharded local parameters into one contiguous all-gather buffer within a single node so that NCCL can transfer them more efficiently. If the copy-in takes a long time, it's worth use a separate stream for it:
+
+```
+Layer N:   |<- Copy-in ->|<- All-Gather ->|<- Compute ->|
+Layer N+1:               |<- Copy-in ->|<- All-Gather ->|<- Compute ->|
+Layer N+2:                             |<- Copy-in ->|<- All-Gather ->|<- Compute ->|
+```
+
+For basic 1D FSDP2, the main communication path only needs the all-gather copy-in stream, the all-gather stream, and the reduce-scatter streams. The extra all-reduce stream exists because the runtime is shared with HSDP and custom all-reduce hooks. Below is a code snippet from pyTorch FSDP2 source code (https://github.com/pytorch/pytorch/blob/ba15482709c78c86a22524387f31bf6f13468dd2/torch/distributed/fsdp/_fully_shard/_fsdp_param_group.py#L72-L93):
+
+```pytorch
+def lazy_init(self, device: torch.device):
+    ...
+    self.all_gather_copy_in_stream = self.device_handle.Stream(priority=high_priority)
+    self.all_gather_stream = self.device_handle.Stream(priority=high_priority)
+    self.reduce_scatter_stream = self.device_handle.Stream(priority=high_priority)
+    self.all_reduce_stream = self.device_handle.Stream()
+    ...
+```
 
 [^1]: ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. arXiv, October 4, 2019. <https://arxiv.org/abs/1910.02054>
 [^2]: Fully Sharded Data Parallel: Faster AI Training with Fewer GPUs. Meta Engineering, July 15, 2021. <https://engineering.fb.com/2021/07/15/open-source/fsdp/>
 [^3]: PyTorch FSDP: Experiences on Scaling Fully Sharded Data Parallel. arXiv, April 21, 2023. <https://arxiv.org/abs/2304.11277>
+[^4]: Getting Started with Fully Sharded Data Parallel (FSDP2). PyTorch Tutorials. <https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html>
