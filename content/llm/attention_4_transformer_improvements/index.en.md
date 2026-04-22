@@ -7,12 +7,12 @@ math: true
 
 This post continues the Transformer series and focuses on the changes that made the original architecture work better for large language models. The core idea of attention is still the same, but several parts of the 2017 design are now commonly replaced:
 
-- encoder-decoder --> decoder-only
-- post-norm --> pre-norm
-- LayerNorm --> RMSNorm
-- absolute positional encoding --> RoPE
-- MHA --> GQA, MQA, or MLA
-- GELU --> gated MLP such as SwiGLU
+- [Decoder-Only Instead of Encoder-Decoder](#decoder-only-instead-of-encoder-decoder)
+- [Pre-Norm Instead of Post-Norm](#pre-norm-instead-of-post-norm)
+- [RMSNorm Instead of LayerNorm](#rmsnorm-instead-of-layernorm)
+- [RoPE Instead of Absolute Positional Encoding](#rope-instead-of-absolute-positional-encoding)
+- [GQA, MQA, and MLA Instead of MHA](#gqa-mqa-and-mla-instead-of-mha)
+- [GLU instead of GELU in FFN/MLP](#glu-instead-of-gelu-in-ffnmlp)
 
 As a refresher, the below is the original transformer architecture:
 
