@@ -56,9 +56,7 @@ class ResidualConnection(nn.Module):
 
 ### RMSNorm Instead of LayerNorm
 
-Many modern language models replace LayerNorm with **RMSNorm**. RMSNorm is a simplified variant that normalizes by the **root mean square** of the activations and does not subtract the mean. This reduces computation while usually preserving similar model quality. In practice, RMSNorm is often preferred because it can effectively mitigate the vanishing-gradient problem in deep networks while maintaining fast training convergence.
-
-The corresponding formulas are:
+Many modern language models replace LayerNorm with **RMSNorm** (Root Mean Square Layer Normalization). RMSNorm is a simplified variant that normalizes by the **root mean square** of the activations and does not subtract the mean. The RMSNorm formula is:
 
 {{< rawhtml >}}
 $$
@@ -67,6 +65,22 @@ $$
 \operatorname{RMS}(x) = \sqrt{\frac{1}{N}\sum_{i=1}^{N} x_i^2}
 $$
 {{< /rawhtml >}}
+
+This reduces computation while usually preserving similar model quality. In practice, RMSNorm is often preferred because it can effectively mitigate the vanishing-gradient problem in deep networks while maintaining fast training convergence.
+
+Below is a PyTorch code snippet for RMSNorm. This is the RMSNorm counterpart to the [Layer Norm](/llm/attention_1_transformer_basics/#batch-norm-and-layer-norm) example in the original Transformer basics post.
+
+```python
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x):
+        rms = x.pow(2).mean(dim=-1, keepdim=True).sqrt()
+        return self.weight * x / (rms + self.eps)
+```
 
 ### RoPE Instead of Absolute Positional Encoding
 
