@@ -161,7 +161,7 @@ class SwiGLU(nn.Module):
 
 
 class FFN_SwiGLU(nn.Module):
-    def __init__(self, d_model, mlp_ratio=3.0):  # modern LLM 默认
+    def __init__(self, d_model, mlp_ratio=3.0):  # common default in modern LLMs
         super().__init__()
         hidden_dim = int(mlp_ratio * d_model)
 
