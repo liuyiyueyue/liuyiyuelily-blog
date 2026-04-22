@@ -110,7 +110,7 @@ PipeDream partitions the model into pipeline stages by balancing per-stage compu
 
 ### Sequence Parallelism
 
-Two papers both discuss sequence parallelism but with different goals and methods.
+Two papers both discuss sequence parallelism (also called context parallelism) but with different goals and methods.
 
 **Megatron-LM**
 

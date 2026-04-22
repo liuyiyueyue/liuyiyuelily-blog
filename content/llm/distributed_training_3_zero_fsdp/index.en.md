@@ -8,7 +8,7 @@ math: true
 Conventional data parallelism replicates the full model state on every GPU, so memory does not decrease as the cluster scales out. ZeRO and FSDP address this by sharding optimizer states, gradients, and parameters across devices, allowing much larger models to be trained under the same memory budget.
 
 这篇文章的重点有两个：
-  1. 哪些 tensor 可以长期以分片形式保存，哪些 tensor 需要在 forward、backward 和 optimizer step 中进行通信，以及为什么这样的分片方式不会破坏训练语义。
+  1. 哪些 tensor 可以长期以分片形式保存，哪些 tensor 分片后需要在 forward、backward 和 optimizer step 中进行通信，什么时候进行通信，以及为什么这样的分片和通信方式不会破坏训练语义。
   2. 这种分片策略分别能节省多少 memory 和 communication。
 
 ### ZeRo [^1]
@@ -102,10 +102,6 @@ The conclusion is that ZeRO-1 and ZeRO-2 have the same communication volume as c
 ### FSDP [^2] [^3]
 Facebook introduced **FSDP (Fully Sharded Data Parallel)** as PyTorch’s counterpart to Microsoft’s **ZeRO** in DeepSpeed. FSDP can be viewed as an optimized version of **DDP** within PyTorch. It is still a form of data parallelism, but unlike DDP, FSDP uses **parameter sharding**. In other words, model parameters are partitioned across GPUs, whereas in DDP each GPU keeps a full copy of the parameters. This allows FSDP to achieve better training efficiency, both in terms of speed and GPU memory usage.
 
-```python
-fsdp_module = FullyShardedDataParallel(module)
-```
-
 {{< figure src="./images/fsdp-graph-2.png" caption="FSDP execution flow." align="center" >}}
 
 **Constructor**
@@ -114,24 +110,44 @@ fsdp_module = FullyShardedDataParallel(module)
 
 **Forward pass**
 
-1. For each FSDP unit, run `all_gather` to collect parameter shards from all ranks, so each rank temporarily holds the full parameters for the current unit. This is also why FSDP still belongs to data parallelism: although the parameters are sharded for storage, computation still uses the original full parameters rather than computing directly on weight shards as in tensor parallelism.
+1. For each FSDP unit, run **all_gather** to collect **parameter** shards from all ranks, so each rank temporarily holds the full parameters for the current unit. This is also why FSDP still belongs to data parallelism: although the parameters are sharded for storage, computation still uses the original full parameters rather than computing directly on weight shards as in tensor parallelism.
 2. Execute the forward computation.
 3. Reshard the parameters, discard the portions that do not belong to the current rank, and free the corresponding memory.
 
 **Backward pass**
 
-1. For each FSDP unit, run `all_gather` again to collect parameter shards from all ranks.
+1. For each FSDP unit, run **all_gather** again to collect **parameter** shards from all ranks.
 2. Execute the backward computation.
 3. Reshard the parameters again, discard the portions that do not belong to the current rank, and free the corresponding memory.
-4. Run `reduce_scatter` to synchronize gradients across ranks.
+4. Run **reduce_scatter** to synchronize **gradients** across ranks.
 
 **Optimizer updates**
 
 - Each rank updates the local shard of gradients and parameters that it owns.
 
+**Code**
+
+```python
+    # Optional: auto-wrap large layers
+    # If a submodule has parameter count >= threshold, wrap it as its own FSDP unit
+    auto_wrap_policy = functools.partial(size_based_auto_wrap_policy, min_num_params=1e6)
+
+    model = FSDP(model, auto_wrap_policy=auto_wrap_policy)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+```
+
+The full runnable example is in [`code/basic_fsdp1.py`](./code/basic_fsdp1.py). It initializes distributed execution, wraps the model with `FSDP`, and then runs a standard forward-backward-optimizer loop. The optional `auto_wrap_policy` demonstrates how larger submodules can be split into separate FSDP units instead of wrapping the entire model as one flat unit.
+
+
 #### FSDP 2
 
 略 ;-) 写累了
+TODO：
+    - FSDP2的前向三流并行 - Eric的文章 - 知乎
+https://zhuanlan.zhihu.com/p/1971313139116126428
+    - Pytorch FSDP2解析 - 入机的文章 - 知乎
+https://zhuanlan.zhihu.com/p/1934025640065073496
 
 [^1]: ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. arXiv, October 4, 2019. <https://arxiv.org/abs/1910.02054>
 [^2]: Fully Sharded Data Parallel: Faster AI Training with Fewer GPUs. Meta Engineering, July 15, 2021. <https://engineering.fb.com/2021/07/15/open-source/fsdp/>
