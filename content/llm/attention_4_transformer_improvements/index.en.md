@@ -11,7 +11,7 @@ This post continues the Transformer series and focuses on the changes that made 
 - post-norm --> pre-norm
 - LayerNorm --> RMSNorm
 - absolute positional encoding --> RoPE
-- MHA --> GQA or MQA
+- MHA --> GQA, MQA, or MLA
 - GELU --> gated MLP such as SwiGLU
 
 As a refresher, the below is the original transformer architecture:
@@ -193,9 +193,9 @@ class RoPE(nn.Module):
         return y.to(dtype)
 ```
 
-DeepSeek V3 implements RoPE with `precompute_freqs_cis()` and `apply_rotary_emb()` [^5]. Unlike absolute positional encoding, RoPE is applied to the query and key tensors inside attention rather than added to the input embedding.
+DeepSeek V3 implements RoPE with `precompute_freqs_cis()` and `apply_rotary_emb()` [^5].
 
-### GQA and MQA Instead of MHA
+### GQA, MQA, and MLA Instead of MHA
 
 In standard multi-head attention (MHA), every head has its own query, key, and value projections. During inference, the KV cache therefore grows with the number of attention heads. This becomes expensive for large models and long sequences. So if the number of KV heads is smaller than the number of query heads, KV-cache memory becomes smaller:
 
@@ -203,13 +203,136 @@ In standard multi-head attention (MHA), every head has its own query, key, and v
 KV cache size = num_layers × seq_len × num_kv_heads × head_dim × 2 × dtype_size
 ```
 
-Two common improvements are:
+Common improvements are:
 
-- **GQA**: several query heads share one key head and one value head per group [^4]. GQA keeps more modeling flexibility and is often a better quality-efficiency tradeoff
-- **MQA**: many query heads share one key head and one value head [^3]. MQA gives the largest KV-cache reduction.
+- **GQA** (Group-Query Attention): several query heads share one key head and one value head per group [^4]. GQA keeps more modeling flexibility and is often a better quality-efficiency tradeoff
+- **MQA** (Multi-Query Attention): many query heads share one key head and one value head [^3]. MQA gives the largest KV-cache reduction.
+- **MLA** (Multi-Head Latent Attention): introduced in DeepSeek-V2 [^5], it compresses attention information (key and value tensors) into a smaller latent representation and caches that compact state. The model then reconstructs the effective keys and values from the latent state during attention.
 
-{{< figure src="images/mha_mqa_gqa.png" alt="Rotary positional embedding illustration" width="750" align="center" >}}
+{{< figure src="images/mha_mqa_gqa_mla.png" alt="MHA, GQA, MQA, and MLA" width="1000" align="center" >}}
 
+Intuitively, GQA and MQA reduce memory by **sharing** KV heads, while MLA reduces memory by **compressing** KV information into a latent space.
+
+Below is an example of GQA implementation. You can compare it with the original [MultiHeadAttentionBlock](/llm/attention_1_transformer_basics/#multi-head-attention-mha) code. MQA is the special case where `n_kv_head = 1`:
+
+```python
+class GroupedQueryAttentionBlock(nn.Module):
+    """
+    Grouped-query self-attention block.
+
+    Args:
+        dim (int): Input and output dimension of each token representation.
+        n_head (int): Number of query heads.
+        n_kv_head (int): Number of shared key/value heads.
+    """
+
+    def __init__(self, dim: int, n_head: int, n_kv_head: int) -> None:
+        """
+        Initializes the grouped-query attention projections.
+
+        Args:
+            dim (int): Input and output dimension of each token representation.
+            n_head (int): Number of query heads.
+            n_kv_head (int): Number of shared key/value heads.
+        """
+        super().__init__()
+        self.dim = dim
+        self.n_head = n_head
+        self.n_kv_head = n_kv_head
+        assert dim % n_head == 0
+        assert n_head % n_kv_head == 0
+
+        self.d_k = dim // n_head  # Per-query-head feature dimension.
+        self.n_rep = n_head // n_kv_head  # Number of query heads per KV head.
+        self.w_q = nn.Linear(dim, dim, bias=False)  # Wq
+        self.w_k = nn.Linear(dim, n_kv_head * self.d_k, bias=False)  # Wk
+        self.w_v = nn.Linear(dim, n_kv_head * self.d_k, bias=False)  # Wv
+        self.w_o = nn.Linear(dim, dim, bias=False)  # Wo
+
+    @staticmethod
+    def repeat_kv(x, n_rep):
+        """
+        Repeats each KV head so query heads in the same group share it.
+
+        Args:
+            x (torch.Tensor): Tensor of shape (batch, n_kv_head, seq_len, d_k).
+            n_rep (int): Number of query heads that share each KV head.
+
+        Returns:
+            torch.Tensor: Tensor of shape (batch, n_head, seq_len, d_k).
+        """
+        if n_rep == 1:
+            return x
+        return x.repeat_interleave(n_rep, dim=1)
+
+    @staticmethod
+    def attention(query, key, value, mask):
+        """
+        Computes scaled dot-product attention for all query heads.
+
+        Args:
+            query (torch.Tensor): Query tensor of shape (batch, n_head, seq_len, d_k).
+            key (torch.Tensor): Key tensor of shape (batch, n_head, seq_len, d_k).
+            value (torch.Tensor): Value tensor of shape (batch, n_head, seq_len, d_k).
+            mask (torch.Tensor | None): Optional attention mask.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Attention output of shape
+            (batch, n_head, seq_len, d_k) and attention scores of shape
+            (batch, n_head, seq_len, seq_len).
+        """
+        d_k = query.shape[-1]
+        attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)  # (batch, n_head, seq_len, seq_len)
+        if mask is not None:
+            attention_scores.masked_fill_(mask == 0, -1e9)
+        attention_scores = attention_scores.softmax(dim=-1)  # (batch, n_head, seq_len, seq_len)
+        return (attention_scores @ value), attention_scores  # (batch, n_head, seq_len, d_k)
+
+    def forward(self, q, k, v, mask):
+        """
+        Forward pass for grouped-query attention.
+
+        Args:
+            q (torch.Tensor): Query tensor of shape (batch, seq_len, dim).
+            k (torch.Tensor): Key tensor of shape (batch, seq_len, dim).
+            v (torch.Tensor): Value tensor of shape (batch, seq_len, dim).
+            mask (torch.Tensor | None): Optional attention mask.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch, seq_len, dim).
+        """
+        query = self.w_q(q)  # (batch, seq_len, dim) --> (batch, seq_len, dim)
+        key = self.w_k(k)  # (batch, seq_len, dim) --> (batch, seq_len, n_kv_head * d_k)
+        value = self.w_v(v)  # (batch, seq_len, dim) --> (batch, seq_len, n_kv_head * d_k)
+
+        # Split query into n_head smaller subspaces, one for each query head.
+        # (batch, seq_len, dim) --> (batch, seq_len, n_head, d_k) --> (batch, n_head, seq_len, d_k)
+        query = query.view(query.shape[0], query.shape[1], self.n_head, self.d_k).transpose(1, 2)
+
+        # Split key/value into fewer shared KV heads.
+        # (batch, seq_len, n_kv_head * d_k) --> (batch, seq_len, n_kv_head, d_k) --> (batch, n_kv_head, seq_len, d_k)
+        key = key.view(key.shape[0], key.shape[1], self.n_kv_head, self.d_k).transpose(1, 2)
+        value = value.view(value.shape[0], value.shape[1], self.n_kv_head, self.d_k).transpose(1, 2)
+
+        # Repeat each KV head so all query heads in the same group share it.
+        # (batch, n_kv_head, seq_len, d_k) --> (batch, n_head, seq_len, d_k)
+        key = self.repeat_kv(key, self.n_rep)
+        value = self.repeat_kv(value, self.n_rep)
+
+        # Apply scaled dot-product attention independently in each query head.
+        # Q K V are all (batch, n_head, seq_len, d_k) --> (batch, n_head, seq_len, d_k)
+        x, self.attention_scores = GroupedQueryAttentionBlock.attention(query, key, value, mask)
+
+        # Concatenate all query-head outputs back into the full model dimension.
+        # (batch, n_head, seq_len, d_k) --> (batch, seq_len, n_head, d_k) --> (batch, seq_len, dim)
+        x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.n_head * self.d_k)
+
+        # Final linear projection output after merging the heads.
+        # (batch, seq_len, dim) --> (batch, seq_len, dim)
+        return self.w_o(x)
+```
+
+Compared with MHA, the only structural change is that `K` and `V` are projected into fewer heads than `Q`, then shared across groups of query heads. If `n_kv_head = n_head`, this reduces to standard MHA. If `n_kv_head = 1`, it becomes MQA.
 
 ### GLU instead of GELU in FFN/MLP
 
@@ -250,8 +373,11 @@ class FFN_SwiGLU(nn.Module):
         return self.proj(self.fc(x))
 ```
 
+<!--LorA-->
+
 [^1]: Jianlin Su, Yu Lu, Shengfeng Pan, Ahmed Murtadha, Bo Wen, and Yunfeng Liu. RoFormer: Enhanced Transformer with Rotary Position Embedding. arXiv, April 20, 2021. <https://arxiv.org/abs/2104.09864>
 [^2]: Shreyash Shukla. RoPE (Rotary Positional Embeddings). <https://shreyashkar-ml.github.io/posts/rope/>
 [^3]: Noam Shazeer. Fast Transformer Decoding: One Write-Head Is All You Need. arXiv, November 6, 2019. <https://arxiv.org/abs/1911.02150>
 [^4]: Joshua Ainslie, James Lee-Thorp, Michiel de Jong, Yury Zemlyanskiy, Federico Lebron, and Sumit Sanghai. GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints. arXiv, May 22, 2023. <https://arxiv.org/abs/2305.13245>
-[^5]: DeepSeek-V3 GitHub repository. <https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py>
+[^5]: DeepSeek-AI. DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model. arXiv, June 19, 2024. <https://arxiv.org/abs/2405.04434>
+[^6]: DeepSeek-V3 GitHub repository. <https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py>
