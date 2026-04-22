@@ -46,3 +46,20 @@ If a module needs to store several repeated child modules, PyTorch provides `nn.
 ```python
 self.residual_connections = nn.ModuleList([ResidualConnection(dim, dropout) for _ in range(2)])
 ```
+
+### DeviceMesh
+
+`DeviceMesh` is PyTorch’s abstraction for device topology in distributed execution. It defines how devices are organized so APIs such as FSDP2 and DTensor know how tensors should be sharded or replicated. Below is a simple example:
+
+```python
+import torch
+from torch.distributed.device_mesh import init_device_mesh
+
+# 4 GPUs organized as a 1D mesh
+mesh_1d = init_device_mesh("cuda", (4,))
+print(mesh_1d)
+
+# 8 GPUs organized as a 2D mesh
+mesh_2d = init_device_mesh("cuda", (2, 4))
+print(mesh_2d)
+```
