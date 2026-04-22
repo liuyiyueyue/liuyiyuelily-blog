@@ -90,15 +90,17 @@ In the original Transformer, the positional encoding vector is defined by altern
 
 {{< rawhtml >}}
 $$
-\operatorname{PE}(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
+\begin{aligned}
+\operatorname{PE}(pos, 2i) &= \sin\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right) &= \sin(pos\,\theta_i) \\
+\operatorname{PE}(pos, 2i+1) &= \cos\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right) &= \cos(pos\,\theta_i)
+\end{aligned}
+
+\qquad
+
+\text{, where } \theta_i = 10000^{-2i/d_{\mathrm{model}}}
 $$
 {{< /rawhtml >}}
 
-{{< rawhtml >}}
-$$
-\operatorname{PE}(pos, 2i+1) = \cos\left(\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\right)
-$$
-{{< /rawhtml >}}
 
 Here, $pos$ is the token position, $i$ indexes the feature dimension, and $d_{\mathrm{model}}$ is the hidden size. The final input representation is:
 
@@ -106,14 +108,12 @@ $$
 x_{pos} = e_{pos} + \operatorname{PE}(pos)
 $$
 
-where $e_{pos}$ is the token embedding.
+where $e_{pos}$ is the token embedding. This works, but the position signal is injected by addition at the input, rather than directly in the attention computation.
 
-At a high level, RoPE has two practical advantages:
+RoPE takes a different approach. Instead of adding a positional vector to the token embedding, it rotates the query and key vectors in a position-dependent way before computing attention. In practice, this gives two useful properties:
 
-- it encodes **relative position information** naturally inside attention
-- it usually extrapolates to longer sequence lengths better than fixed learned absolute embeddings
-
-RoPE does not simply add a position vector to the hidden state. Instead, it rotates the query and key vectors in a position-dependent way before attention is computed. This means position information is injected directly into the attention dot product.
+- position information is encoded directly inside the attention dot product
+- the resulting attention depends naturally on relative position differences
 
 For each 2D pair of features, RoPE applies a rotation matrix that depends on the token position $m$:
 
@@ -139,7 +139,7 @@ $$
 \operatorname{score}(m,n) = \sum_i \tilde{q}_i^\top \tilde{k}_i
 $$
 
-The important property is that the inner product depends on the position difference $n-m$ [^2]:
+The key property is that this inner product depends on the position difference $n-m$ rather than on two unrelated absolute positions [^2]:
 
 $$
 \tilde{q}_i^\top \tilde{k}_i = q_i^\top R((n-m)\theta_i) k_i
@@ -147,7 +147,53 @@ $$
 
 {{< figure src="images/rope.png" alt="Rotary positional embedding illustration" width="750" align="center" >}}
 
-So RoPE turns absolute positions into a form that naturally expresses **relative position** inside attention. That is the main reason it works so well for causal language models.
+The main implementation difference is that absolute positional encoding is added to the input embeddings, while RoPE is applied directly to the query and key vectors inside attention. As a result, absolute encoding injects position information indirectly through the input representation, whereas RoPE encodes position directly in the attention computation and naturally captures relative position differences.
+
+Here is a PyTorch counterpart to the original [PositionalEncoding](/llm/attention_1_transformer_basics/#positional-encoding) module.
+
+```python
+class RoPE(nn.Module):
+    """
+    Rotary positional embedding for attention query and key tensors.
+    """
+
+    def __init__(self, dim: int, seq_len: int, base: float = 10000.0) -> None:
+        """
+        Precomputes the complex rotation factors for each position.
+        cis(theta) = cos(theta) + i sin(theta)
+
+        Args:
+            dim (int): Per-head dimension. Must be even.
+            seq_len (int): Maximum sequence length supported by the embedding.
+            base (float): Base used to compute angular frequencies.
+        """
+        super().__init__()
+        assert dim % 2 == 0
+
+        position = torch.arange(seq_len, dtype=torch.float32)  # (seq_len,)
+        theta = base ** (-torch.arange(0, dim, 2, dtype=torch.float32) / dim)  # (dim // 2,)
+        freqs = torch.outer(position, theta)  # (seq_len, dim // 2)
+        freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # (seq_len, dim // 2)
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies RoPE to a tensor of shape (batch, n_head, seq_len, dim).
+
+        Args:
+            x (torch.Tensor): Query or key tensor.
+
+        Returns:
+            torch.Tensor: Tensor with rotary positional embedding applied.
+        """
+        dtype = x.dtype
+        x = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+        freqs_cis = self.freqs_cis[:x.shape[-2]].view(1, 1, x.shape[-2], x.shape[-1])
+        y = torch.view_as_real(x * freqs_cis).flatten(-2)
+        return y.to(dtype)
+```
+
+DeepSeek V3 implements RoPE with `precompute_freqs_cis()` and `apply_rotary_emb()` [^5]. Unlike absolute positional encoding, RoPE is applied to the query and key tensors inside attention rather than added to the input embedding.
 
 ### GQA and MQA Instead of MHA
 
@@ -208,3 +254,4 @@ class FFN_SwiGLU(nn.Module):
 [^2]: Shreyash Shukla. RoPE (Rotary Positional Embeddings). <https://shreyashkar-ml.github.io/posts/rope/>
 [^3]: Noam Shazeer. Fast Transformer Decoding: One Write-Head Is All You Need. arXiv, November 6, 2019. <https://arxiv.org/abs/1911.02150>
 [^4]: Joshua Ainslie, James Lee-Thorp, Michiel de Jong, Yury Zemlyanskiy, Federico Lebron, and Sumit Sanghai. GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints. arXiv, May 22, 2023. <https://arxiv.org/abs/2305.13245>
+[^5]: DeepSeek-V3 GitHub repository. <https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py>
