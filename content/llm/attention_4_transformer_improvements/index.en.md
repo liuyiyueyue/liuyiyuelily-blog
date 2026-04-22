@@ -16,7 +16,7 @@ This post continues the Transformer series and focuses on the changes that made 
 
 As a refresher, the below is the original transformer architecture:
 
-{{< figure src="images/transformer-with-notes.png" alt="Transformer arch with notes" width="650" align="center" >}}
+{{< figure src="images/transformer-with-notes.png" alt="Transformer arch with notes" width="900" align="center" >}}
 
 ### Decoder-Only Instead of Encoder-Decoder
 
@@ -24,17 +24,35 @@ For autoregressive language modeling, the model only needs to predict the next t
 
 ### Pre-Norm Instead of Post-Norm
 
-The original Transformer applies layer normalization after the residual addition. Many modern LLMs instead use **pre-norm**, where normalization is applied before attention and before the MLP:
+The original Transformer applies layer normalization after the residual addition:
+{{< rawhtml >}}
+$$
+\begin{aligned}
+x &= \operatorname{Norm}(x + \operatorname{Attention}(x)) \\
+x &= \operatorname{Norm}(x + \operatorname{MLP}(x))
+\end{aligned}
+$$
+{{< /rawhtml >}}
 
+Many modern LLMs instead use **pre-norm**, where normalization is applied before attention and before the MLP:
+{{< rawhtml >}}
 $$
-x = x + \operatorname{Attention}(\operatorname{Norm}(x))
+\begin{aligned}
+x &= x + \operatorname{Attention}(\operatorname{Norm}(x)) \\
+x &= x + \operatorname{MLP}(\operatorname{Norm}(x))
+\end{aligned}
 $$
-
-$$
-x = x + \operatorname{MLP}(\operatorname{Norm}(x))
-$$
+{{< /rawhtml >}}
 
 This change improves optimization stability in deep networks. In practice, pre-norm makes gradient flow easier and allows models to scale to many more layers without becoming as difficult to train.
+
+Below is a PyTorch code snippet showing the pre-norm formulation. Note that the implementation in [Residual Connection](/llm/attention_1_transformer_basics/#residual-connection) section already uses pre-norm.
+```python
+class ResidualConnection(nn.Module):
+    ...
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.norm(x)))
+```
 
 ### RMSNorm Instead of LayerNorm
 
