@@ -101,9 +101,9 @@ The amount of time each GPU spends working is closely tied to the batch size it 
 
 The PipeDream family was proposed by Microsoft's MSR Fiddle team [^4]. The core idea is to futher reduce pipeline bubbles. If multiple training iterations are in flight at the same time, each node can work on a different iteration at any given moment. This avoids waiting in place on strict step-by-step data dependencies and keeps the devices busy.
 
-{{< figure src="./images/pipedream_model_parallel_4_machines.png" caption="Figure 3: Model parallel training with 4 machines. Numbers indicate minibatch ID. For simplicity, here we assume that forward and backward work in every stage takes one time unit, and communicating activations across machines has no overhead." align="center" >}}
+{{< figure src="./images/pipedream_model_parallel_4_machines.png" caption="Figure 3: Model parallel training with 4 machines. Numbers indicate minibatch ID. For simplicity, here we assume that forward and backward work in every stage takes one time unit, and communicating activations across machines has no overhead." width="600" align="center" >}}
 
-{{< figure src="./images/pipedream_pipeline_4_machines.png" caption="Figure 8: An example pipeline with 4 machines, showing startup and steady states." align="center" >}}
+{{< figure src="./images/pipedream_pipeline_4_machines.png" caption="Figure 8: An example pipeline with 4 machines, showing startup and steady states."width="600" align="center" >}}
 
 PipeDream partitions the model into pipeline stages by balancing per-stage compute, memory, and communication, so no single stage becomes the throughput bottleneck (划分任务). To address numerical issues from stale weights, it uses techniques like weight stashing and 1F1B scheduling so each microbatch’s forward and backward passes stay more consistent (收敛性问题).
 
@@ -121,6 +121,10 @@ The first paper is Megatron-LM’s third paper, “Reducing Activation Recomputa
 **ColossalAI**
 
 The other paper is ColossalAI’s “Sequence Parallelism: Long Sequence Training from a System Perspective” [^6]. It mainly addresses limitations from long input sequence length, which scales quadratically with self-attention's memory usage. It splits the input sequence into multiple chunks and feed each chunk to a GPU. It proposes the the Ring Self-Attention (RSA) to compute the attention.
+
+<!-- 
+大模型训练之序列并行双雄：DeepSpeed Ulysses & Ring-Attention - 方佳瑞的文章 - 知乎 https://zhuanlan.zhihu.com/p/689067888
+-->
 
 
 ### Expert Parallelism
@@ -148,24 +152,27 @@ During the forward pass, a token may be routed to any expert, so we must send it
 
 {{< figure src="./images/all-to-all_expert_parallel.png" caption="All-to-all dispatch and combine. Each block represents one token." align="center" >}}
 
-**Communication Overhead**
+1. Communication Overhead
 
-Let the local token tensor have shape `[b, s, h]`. In the MoE routing step it is common to reshape them to `[b * s, h]`, so each row in `[b * s, h]` is one token. After routing, each token is duplicated across its selected experts, so the routed tensor has shape `[b * s * top-k, h]`. If tokens are evenly distributed, each EP rank sends and receives about
-`b * s * top-k * (total_ep_ranks - 1) / total_ep_ranks`
-tokens during one all-to-all exchange. The factor `(total_ep_ranks - 1) / total_ep_ranks` is the probability that a routed token needs to go to another GPU, so in practice the communication volume is on the order of `b * s * top-k`. With half-precision activations, the communication cost per phase is roughly `2 * b * s * top-k * h` bytes. Since EP has both a dispatch phase and a combine phase, the total communication is about `4 * b * s * top-k * h` bytes [^16].
+Let the local token tensor have shape $[b, s, h]$. In the MoE routing step, it is common to reshape it to $[b \cdot s, h]$, so each row corresponds to one token. After routing, each token is duplicated across its selected experts, so the routed tensor has shape $[b \cdot s \cdot \mathrm{top}\text{-}k, h]$.
 
-<!-- 
-**Compute Efficiency**
-**Memory Usage**
-MoE 训练到底是开 TP 还是 EP？ - xffxff的文章 - 知乎
-https://zhuanlan.zhihu.com/p/13997146226 
--->
+If tokens are evenly distributed across $E$ EP ranks, the expected number of tokens that one rank sends or receives in a single all-to-all exchange is $\frac{b \cdot s \cdot \mathrm{top}\text{-}k \cdot (E - 1)}{E}$. Here, $\frac{E - 1}{E}$ is the probability that a routed token must be transferred to a different GPU, so the communication volume per phase is asymptotically $\mathcal{O}(b \cdot s \cdot \mathrm{top}\text{-}k)$. With half-precision activations, each element uses 2 bytes, so the communication cost per phase is approximately $2 \cdot b \cdot s \cdot \mathrm{top}\text{-}k \cdot h$ bytes. Since EP includes both a dispatch phase and a combine phase, the total communication is approximately $4 \cdot b \cdot s \cdot \mathrm{top}\text{-}k \cdot h$ bytes [^16].
+
+2. Compute Efficiency
+
+EP and TP have similar total FLOPs for expert computation, but EP tends to form fewer, larger GEMMs because tokens for the same local expert are gathered onto the rank that owns that expert, while TP shards each expert across ranks and therefore tends to form more, smaller GEMMs.
+
+Overall, EP has an advantage over TP for expert computation: each kernel launch carries a larger workload, and the total number of kernel launches is lower.
+
+3. Memory Usage
+
+Under load imbalance, one rank may receive too many tokens, causing its activation memory usage to spike and potentially trigger an out-of-memory error. From a memory perspective, TP has a clear advantage: its memory usage is lower and more stable.
 
 **GShard**
 
 The GShard paper consists of two parts: one talks about the APIs ("GShard is a module composed of a set of lightweight annotation APIs and an extension to the XLA compiler."); the other discusses MoE. We focus on the second part here. GShard was the first work to extend the MoE idea to Transformers. Specifically, it replaced every other FFN layer in the Transformer encoder and decoder with a position-wise MoE layer, using a Top-2 gating network throughout [^7].
 
-![GShard expert parallelism](images/gshard_expert_parallelism.png)
+{{< figure src="images/gshard_expert_parallelism.png" alt="GShard expert parallelism" width="1000" align="center" >}}
 
 **DeepEP**
 
@@ -177,9 +184,7 @@ Megatron’s alltoall dispatcher has a relatively clean implementation, but it m
 
 Overall, DeepEP reduces this redundancy through hierarchical dispatch and combine: two communication levels, inter-host and intra-host, plus three levels of permute and unpermute, across hosts, across devices within a host, and across experts within a device.
 
-What suprises me is that the DeepEP's optimizations go very deep. This library uses **a custom PTX instruction**, `ld.global.nc.l1::no_allocate.l2::256b`, to improve global memory access by avoiding L1 cache allocation, reducing eviction, and taking advantage of 256-byte L2 cache transfers. DeepEP documents this optimization as an undefined-behavior technique and notes it can be disabled with DISABLE_AGGRESSIVE_PTX_INSTRS=1 on unsupported platforms [^13].
-
-> PTX ("pee-tex") is NVIDIA's low-level parallel-thread execution virtual machine, exposing the GPU as a parallel compute device and serving as the intermediate instruction set generated by high-level compilers like CUDA C++. Those PTX instructions are then translated into SASS, the native assembly that actually runs on NVIDIA GPU hardware [^14].
+What suprises me is that the DeepEP's optimizations go very deep. This library uses **a custom PTX instruction**, `ld.global.nc.l1::no_allocate.l2::256b`, to improve global memory access by avoiding L1 cache allocation, reducing eviction, and taking advantage of 256-byte L2 cache transfers. DeepEP documents this optimization as an undefined-behavior technique and notes it can be disabled with DISABLE_AGGRESSIVE_PTX_INSTRS=1 on unsupported platforms [^13] [^14].
 
 
 ### Automatic Parallelism
