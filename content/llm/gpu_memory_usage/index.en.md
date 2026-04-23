@@ -13,7 +13,7 @@ We refer to the memory used by model parameters as **static memory**, meaning it
 
 We refer to **activation** memory as **dynamic memory**, meaning its lifetime is short and its memory can be reused. Activations have dynamic memory since they are created during forward pass and released or recomputed after backward.
 
-{{< figure src="/llm/distributed_training_3_zero_fsdp/images/static_dynamic_memory.jpg" caption="Static memory vs. dynamic memory in training." align="center" >}}
+{{< figure src="./images/static_dynamic_memory.jpg" caption="Static memory vs. dynamic memory in training." align="center" >}}
 
 
 ### Training
