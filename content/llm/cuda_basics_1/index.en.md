@@ -39,6 +39,16 @@ Streaming Multiprocessors (SMs)
 
 Conceptually, one SM can be viewed as four smaller execution partitions that share on-chip resources such as registers, shared memory, and cache. Each partition has its own warp scheduler and dispatch logic. Within a partition, the **warp scheduler** can often issue two instructions per cycle from the same warp: one compute instruction, such as INT32, FP32, or Tensor Core work, and one memory instruction, such as a load or store. This is why the scheduler is described as **dual-issue**. The Special Function Unit (SFU) sits alongside these pipelines and handles transcendental operations such as sine, cosine, reciprocal, and square root, but it is separate from the usual compute-plus-memory dual-issue pairing.
 
+**Comparison with GPU**
+
+| GPU | TPU |
+|---|---|
+| SM (streaming multiprocessor) | Tensor Core |
+| Warp Scheduler | VPU slots |
+| SMEM (L1 cache) | VMEM |
+| Registers | Vector Registers (VRegs) |
+| Tensor Core | MXU |
+
 
 ### Threads, Warps, Blocks, and Grids
 
