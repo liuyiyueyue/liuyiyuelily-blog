@@ -112,6 +112,12 @@ PipeDream partitions the model into pipeline stages by balancing per-stage compu
 
 Two papers both discuss sequence parallelism (also called context parallelism) but with different goals and methods.
 
+**Ring-Attention**
+
+Before reading this section, please read the [FlashAttention](../../attention_3_flashattention/index.en.md) blog first.
+
+Ring Attention is roughly a "distributed" version of FlashAttention-2 [^17]. In FlashAttention-2, both the outer loop over `Q` tiles and the inner loop over `K/V` tiles run on a single GPU. In Ring Attention, the `Q` tiles are first partitioned across multiple GPUs, and the `K/V` tiles are then circulated around those GPUs with ring communication. Each GPU updates its local output tile in essentially the same way as FlashAttention-2.
+
 **Megatron-LM**
 
 The first paper is Megatron-LM’s third paper, “Reducing Activation Recomputation in Large Transformer Models” [^5]. The motivation behind Megatron-LM’s sequence parallelism was to *distribute the memory that tensor parallelism could not shard anymore*.
