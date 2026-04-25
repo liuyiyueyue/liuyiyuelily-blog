@@ -30,7 +30,7 @@ In a naive attention implementation, the matrices `Q`, `K`, and `V` are stored i
 
 The problem is that these reads and writes are expensive. Attention is often limited not just by computation, but by memory IO.
 
-Also, the attention score matrix grows with sequence length as `N^2`, which makes the memory cost increasingly expensive for long contexts.
+Also, the attention score matrix grows with sequence length as `N^2`, which makes the memory cost increasingly expensive for long contexts. See detailed calculation of compute and space complexity in
 
 ### How FlashAttention Helps
 
@@ -43,7 +43,24 @@ It does this in two main ways:
 
 As a result, FlashAttention improves both speed and memory efficiency, especially for long sequences.
 
-### Tiling the Softmax
+### Softmax
+
+**Safe Softmax**
+
+For a vector $[x_1, x_2, \ldots, x_d]$, the standard softmax is
+
+$$
+\operatorname{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j=1}^{d} e^{x_j}}
+$$
+
+Floating-point numbers in hardware have a limited dynamic range. For `float32` and `bfloat16`, when $x$ is large, $e^x$ overflows to `inf`. To avoid overflow and improve numerical stability, softmax is usually computed by subtracting the maximum value first. This is called **safe softmax**:
+
+$$
+m = \max_i(x_i), \qquad
+\operatorname{softmax}(x_i) = \frac{e^{x_i - m}}{\sum_{j=1}^{d} e^{x_j - m}}
+$$
+
+**Tiling the Softmax**
 
 The key difficulty is that softmax is a reduction over the whole row, so it does not look easy to compute block by block at first.
 
