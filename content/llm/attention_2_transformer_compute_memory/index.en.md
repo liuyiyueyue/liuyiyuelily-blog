@@ -143,55 +143,14 @@ $$
 l(24bsh^2 + 4bs^2h) + 2bshV
 $$
 
-Most people write it concisely **using big-O** below, ignoring the $b$ and $l$ constants. Again, $s$ is sequence length, and $h$ is hidden size.
+Most people write it concisely **using big-O** below, ignoring the $b$ and $l$ constants. Again, $s$ is sequence length, and $h$ is hidden size. We can see that both the compute cost of the Transformer grow **quadratically with sequence length**.
 
 $$
-O(sh^2 + s^2h) \text{ or } O(s^2h)
+O(sh^2 + s^2h) \text{ or } O(s^2h) \text{ or } O(s^2) 
 $$
 
-### Parameter Count and FLOPs
 
-When the hidden size $h$ is large and $h \gg s$, we can ignore the linear terms and approximate the compute in FLOPs as $24bsh^2 l$.
-
-As noted in previous sections, a Transformer model with $l$ layers has around $12lh^2$ parameters, and the input contains $bs$ tokens, then:
-
-$$
-\frac{24bsh^2l}{12lh^2 \times bs} = 2 \ \text{FLOPs/token-parameter}
-$$
-
-This means that, in one forward pass, each token-parameter pair requires about 2 floating-point operations: one multiplication and one addition. One can also says that each parameter requires about 2 floating-point operations per token.
-
-One training step includes both a forward pass and a backward pass. The backward pass costs about 2 times the forward pass. 
-Therefore, in one training step, each token-parameter pair requires:
-
-$$
-2 \times (1 + 2) = 6 \ \text{FLOPs/token-parameter}
-$$
-
-We can then estimate the total training compute for GPT-3. For GPT-3 175B, each token-parameter pair uses 6 FLOPs, so the total compute is 6 times the parameter count times the total number of training tokens. GPT-3 has $174600\text{M}$ parameters and is trained on $300\text{B}$ tokens:
-
-$$
-6 \times (174600 \times 10^{6}) \times (300 \times 10^{9})
-= 3.1428 \times 10^{23}\ \text{FLOPs}
-$$
-
-### Training Time Estimation
-
-The amount of compute required to train a Transformer model is determined by the model parameter count and the total number of training tokens. Once the GPU type is fixed, we can estimate the required training time. For a given amount of compute, training time, that is, the time GPUs need to execute that many FLOPs, depends not only on the GPU type but also on GPU utilization. When estimating end-to-end GPU utilization, we need to account for more than just forward and backward computation. We must also include the time spent on CPU data loading, optimizer updates, multi-GPU communication, and logging. In practice, GPU utilization is often in the range of 0.3 to 0.55.
-
-As discussed above, in one forward pass, each token-parameter pair requires 2 floating-point operations. If activation recomputation is used to reduce activation memory, one additional forward pass is needed. Therefore, the coefficient for forward pass + backward pass + activation recomputation is $1 + 2 + 1 = 4$. In one training iteration with activation recomputation, each token-parameter pair requires:
-
-$$
-2 \times 4 = 8 \ \text{FLOPs/token-parameter}
-$$
-
-Given the number of training tokens and the hardware configuration, the training time of a Transformer model can be estimated as:
-
-$$
-\text{Training time} \approx \frac{8 \times \text{training tokens} \times \text{parameter count}}{\text{number of GPUs} \times \text{peak GPU FLOPs} \times \text{GPU utilization}}
-$$
-
-### Activations
+### Activation Memory
 
 Besides model parameters, gradients, and optimizer states, one of the largest contributors to GPU memory usage is the intermediate activations produced during the forward pass. These activations must be saved so they can be reused during backpropagation when computing gradients. Here, **activations** refer to all tensors that are computed during the forward pass and are needed again during the backward pass. This does not include model parameters or optimizer states, but it does include tensors such as the mask matrices required by dropout.
 
@@ -263,7 +222,51 @@ $$
 l(34bsh + 5b a s^2)
 $$
 
-### Memory Usage
+### Training
+
+**Parameter Count and FLOPs**
+
+When the hidden size $h$ is large and $h \gg s$, we can ignore the linear terms and approximate the compute in FLOPs as $24bsh^2 l$.
+
+As noted in previous sections, a Transformer model with $l$ layers has around $12lh^2$ parameters, and the input contains $bs$ tokens, then:
+
+$$
+\frac{24bsh^2l}{12lh^2 \times bs} = 2 \ \text{FLOPs/token-parameter}
+$$
+
+This means that, in one forward pass, each token-parameter pair requires about 2 floating-point operations: one multiplication and one addition. One can also says that each parameter requires about 2 floating-point operations per token.
+
+One training step includes both a forward pass and a backward pass. The backward pass costs about 2 times the forward pass. 
+Therefore, in one training step, each token-parameter pair requires:
+
+$$
+2 \times (1 + 2) = 6 \ \text{FLOPs/token-parameter}
+$$
+
+We can then estimate the total training compute for GPT-3. For GPT-3 175B, each token-parameter pair uses 6 FLOPs, so the total compute is 6 times the parameter count times the total number of training tokens. GPT-3 has $174600\text{M}$ parameters and is trained on $300\text{B}$ tokens:
+
+$$
+6 \times (174600 \times 10^{6}) \times (300 \times 10^{9})
+= 3.1428 \times 10^{23}\ \text{FLOPs}
+$$
+
+**Training Time**
+
+The amount of compute required to train a Transformer model is determined by the model parameter count and the total number of training tokens. Once the GPU type is fixed, we can estimate the required training time. For a given amount of compute, training time, that is, the time GPUs need to execute that many FLOPs, depends not only on the GPU type but also on GPU utilization. When estimating end-to-end GPU utilization, we need to account for more than just forward and backward computation. We must also include the time spent on CPU data loading, optimizer updates, multi-GPU communication, and logging. In practice, GPU utilization is often in the range of 0.3 to 0.55.
+
+As discussed above, in one forward pass, each token-parameter pair requires 2 floating-point operations. If activation recomputation is used to reduce activation memory, one additional forward pass is needed. Therefore, the coefficient for forward pass + backward pass + activation recomputation is $1 + 2 + 1 = 4$. In one training iteration with activation recomputation, each token-parameter pair requires:
+
+$$
+2 \times 4 = 8 \ \text{FLOPs/token-parameter}
+$$
+
+Given the number of training tokens and the hardware configuration, the training time of a Transformer model can be estimated as:
+
+$$
+\text{Training time} \approx \frac{8 \times \text{training tokens} \times \text{parameter count}}{\text{number of GPUs} \times \text{peak GPU FLOPs} \times \text{GPU utilization}}
+$$
+
+**Memory Usage**
 
 In one training iteration, the GPU memory occupied by model parameters (or gradients) depends only on the number of model parameters and the parameter data type. It does **not** depend on the input size. The same is true for optimizer states: their memory usage depends on the optimizer type and the parameter count, but not on the input batch. Intermediate activations are different. Their memory usage grows with the input size, especially with batch size $b$ and sequence length $s$. As $b$ and $s$ increase, activation memory increases accordingly. This is why, when training runs into OOM issues, reducing the batch size often helps: it reduces activation memory, not the memory occupied by parameters, gradients, or optimizer states.
 
