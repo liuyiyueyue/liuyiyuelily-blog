@@ -1,6 +1,6 @@
 ---
 title: "LLM Inference: Inference Servers"
-date: 2026-04-01
+date: 2023-12-15
 tags: ["llm", "inference", "serving", "system"]
 ---
 

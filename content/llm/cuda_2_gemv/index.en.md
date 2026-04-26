@@ -1,6 +1,6 @@
 ---
 title: "CUDA Matrix-Vector Multiplication"
-date: 2025-11-10
+date: 2022-11-10
 tags: ["llm", "cuda", "optimization"]
 math: true
 ---

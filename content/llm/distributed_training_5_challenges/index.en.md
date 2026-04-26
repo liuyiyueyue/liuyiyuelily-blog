@@ -1,6 +1,6 @@
 ---
 title: "Distributed Training: Challenges"
-date: 2026-04-14
+date: 2025-12-18
 tags: ["llm", "distributed-training"]
 ---
 

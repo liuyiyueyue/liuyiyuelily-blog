@@ -1,6 +1,6 @@
 ---
 title: "GPU Memory Usage"
-date: 2026-03-28
+date: 2023-08-01
 tags: ["llm", "gpu", "training", "optimization"]
 math: true
 ---

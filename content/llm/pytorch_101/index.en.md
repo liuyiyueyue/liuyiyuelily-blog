@@ -1,6 +1,6 @@
 ---
 title: "PyTorch 101"
-date: 2022-12-13
+date: 2022-08-13
 tags: ["llm", "pytorch"]
 ---
 

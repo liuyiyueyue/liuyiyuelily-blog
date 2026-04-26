@@ -1,6 +1,6 @@
 ---
 title: "LLM Inference: Optimization Techniques"
-date: 2026-02-26
+date: 2023-12-14
 tags: ["llm", "inference", "optimization"]
 ---
 

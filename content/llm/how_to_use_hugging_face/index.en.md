@@ -1,5 +1,5 @@
 ---
-title: "How to Use Hugging Face"
+title: "Hugging Face"
 date: 2022-07-23
 tags: ["llm", "hugging-face"]
 ---

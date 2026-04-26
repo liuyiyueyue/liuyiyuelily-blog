@@ -1,6 +1,6 @@
 ---
 title: "CUDA Basics"
-date: 2025-10-25
+date: 2022-10-25
 tags: ["llm", "cuda"]
 ---
 

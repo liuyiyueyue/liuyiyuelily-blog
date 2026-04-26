@@ -1,6 +1,6 @@
 ---
-title: "Transformer: Improvements"
-date: 2026-04-04
+title: "Transformer: Advanced Topics"
+date: 2023-07-15
 tags: ["llm", "transformer", "optimization"]
 math: true
 ---
