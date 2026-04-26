@@ -135,10 +135,10 @@ style = 'algol'
 
 # Giscus comments
 [params.giscus]
-enable = false
-repo = "user/repo"
-repoid = "repoId"
-category = "General"
-categoryid = "categoryId"
+enable = true
+repo = "liuyiyueyue/liuyiyuelily-blog"
+repoid = "R_kgDOQu8EAA"
+category = "Announcements"
+categoryid = "DIC_kwDOQu8EAM4C7tj6"
 mapping = "pathname"
 theme = "preferred_color_scheme"
